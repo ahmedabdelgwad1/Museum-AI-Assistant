@@ -65,7 +65,7 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
       
       setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const API_URL = "https://ahmed3182004-museum-backend.hf.space";
       const response = await fetch(`${API_URL}/voice`, { 
         method: "POST", 
         body: formData 
@@ -117,7 +117,7 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
     setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const API_URL = "https://ahmed3182004-museum-backend.hf.space";
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
