@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Corrective RAG configuration
     top_k_results: int = Field(default=5, env="TOP_K_RESULTS")
     max_rewrite_attempts: int = Field(default=2, env="MAX_REWRITE_ATTEMPTS")
+    relevance_threshold: float = Field(default=0.3, env="RELEVANCE_THRESHOLD")
 
     # LLM model
     llm_model: str = Field(default="llama-3.3-70b-versatile", env="LLM_MODEL")

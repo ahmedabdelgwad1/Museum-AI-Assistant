@@ -21,6 +21,6 @@ def should_rewrite(state: GraphState) -> str:
     score = state.get("relevance_score", 0.0)
     rewrites_done = state.get("rewrite_count", 0)
 
-    if score < 0.5 and rewrites_done < settings.max_rewrite_attempts:
+    if score < settings.relevance_threshold and rewrites_done < settings.max_rewrite_attempts:
         return "rewrite"
     return "generate"

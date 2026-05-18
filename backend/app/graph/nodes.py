@@ -242,7 +242,7 @@ def generate_answer(state: GraphState) -> GraphState:
     )
 
     # Detect low-confidence retrieval: max rewrites used AND score still low
-    low_confidence = score < 0.5 and rewrites >= settings.max_rewrite_attempts
+    low_confidence = score < settings.relevance_threshold and rewrites >= settings.max_rewrite_attempts
 
     system_prompt = get_system_prompt(lang, low_confidence=low_confidence)
     context = _build_artifact_context(docs)
