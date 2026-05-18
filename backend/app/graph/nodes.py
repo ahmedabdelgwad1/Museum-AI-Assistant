@@ -1,0 +1,275 @@
+"""
+Three LangGraph node functions for the Corrective RAG pipeline:
+
+  1. rewrite_query        — optimises the query for semantic search
+  2. retrieve_and_grade   — retrieves artifacts + LLM-grades relevance
+  3. generate_answer      — synthesises the final bilingual response
+"""
+
+import logging
+import re
+from typing import Any, Optional
+
+from groq import Groq
+
+from app.config import settings
+from app.graph.state import GraphState
+from app.graph.prompts import (
+    get_rewrite_prompt,
+    get_system_prompt,
+    get_context_template,
+    format_history_for_prompt,
+    GRADE_PROMPT,
+)
+from app.rag.retriever import semantic_search
+from app.utils.language import detect_language
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Shared Groq client (singleton)
+# ---------------------------------------------------------------------------
+
+_groq_client: Optional[Groq] = None
+
+
+def _get_client() -> Groq:
+    global _groq_client
+    if _groq_client is None:
+        _groq_client = Groq(api_key=settings.groq_api_key)
+    return _groq_client
+
+
+def _llm_call(messages: list[dict], max_tokens: int = 512, temperature: float = 0.2) -> str:
+    """
+    Thin wrapper around the Groq chat completions API.
+    Returns the assistant message content string.
+    """
+    client = _get_client()
+    try:
+        completion = client.chat.completions.create(
+            model=settings.llm_model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return completion.choices[0].message.content or ""
+    except Exception as exc:
+        logger.error("Groq LLM call failed: %s", exc)
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Node 1 — Query Rewriter
+# ---------------------------------------------------------------------------
+
+
+def rewrite_query(state: GraphState) -> GraphState:
+    """
+    Node 1 — Query Rewriter.
+
+    - Detects the query language and sets ``language`` in state.
+    - Calls the Groq LLM to rewrite the original query into a
+      keyword-rich phrase optimised for vector search.
+    - Increments ``rewrite_count`` on every pass (first pass sets it to 1).
+    """
+    query = state["original_query"]
+    rewrite_count = state.get("rewrite_count", 0)
+
+    # Detect language once (subsequent rewrites may already have it)
+    lang = state.get("language") or detect_language(query)
+    history = state.get("conversation_history") or []
+
+    logger.info(
+        "Rewriter [pass %d] | lang=%s | history=%d turns | query='%s'",
+        rewrite_count + 1,
+        lang,
+        len(history),
+        query[:80],
+    )
+
+    history_text = format_history_for_prompt(history)
+    messages = [
+        {
+            "role": "user",
+            "content": get_rewrite_prompt(lang).format(
+                history=history_text,
+                query=query,
+            ),
+        }
+    ]
+
+    try:
+        rewritten = _llm_call(messages, max_tokens=80, temperature=0.1).strip()
+    except Exception:
+        # Fall back to the original query if the LLM call fails
+        rewritten = query
+
+    logger.info("Rewritten query: '%s'", rewritten[:80])
+
+    return {
+        **state,
+        "rewritten_query": rewritten,
+        "language": lang,
+        "rewrite_count": rewrite_count + 1,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Node 2 — Retriever + Grader
+# ---------------------------------------------------------------------------
+
+
+def _summarise_docs(docs: list[dict]) -> str:
+    """Build a compact summary of retrieved docs for the grader prompt."""
+    if not docs:
+        return "(no results)"
+    lines = []
+    for i, doc in enumerate(docs[:5], 1):  # cap at 5 for prompt length
+        name = doc.get("artifact_name_en") or doc.get("artifact_name_ar") or "Unknown"
+        hall = doc.get("hall_en", "")
+        cat = doc.get("category_en", "")
+        excerpt = doc.get("description_excerpt") or ""
+        lines.append(f"{i}. {name} | Hall: {hall} | Category: {cat} | {excerpt[:100]}")
+    return "\n".join(lines)
+
+
+def retrieve_and_grade(state: GraphState) -> GraphState:
+    """
+    Node 2 — Retriever + Grader.
+
+    - Runs semantic search in ChromaDB using the rewritten query.
+    - Sets ``retrieved_docs`` in state.
+    - Calls the Groq LLM to grade relevance.
+    - Sets ``relevance_score`` in state.
+    """
+    query = state["rewritten_query"] or state["original_query"]
+    logger.info("Retriever | query='%s'", query[:80])
+
+    docs = semantic_search(query=query, top_k=settings.top_k_results)
+    logger.info("Retrieved %d docs", len(docs))
+
+    # Grade relevance
+    summary = _summarise_docs(docs)
+    messages = [
+        {
+            "role": "user",
+            "content": GRADE_PROMPT.format(query=query, artifacts_summary=summary),
+        }
+    ]
+
+    score = 0.0
+    try:
+        raw_score = _llm_call(messages, max_tokens=10, temperature=0.0).strip()
+        # Extract the first float we find in the response
+        match = re.search(r"\d+(\.\d+)?", raw_score)
+        if match:
+            score = min(1.0, max(0.0, float(match.group())))
+    except Exception as exc:
+        logger.warning("Grader LLM call failed, defaulting score=0.0: %s", exc)
+
+    logger.info("Relevance score: %.2f", score)
+
+    return {
+        **state,
+        "retrieved_docs": docs,
+        "relevance_score": score,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Node 3 — Generator
+# ---------------------------------------------------------------------------
+
+
+def _build_artifact_context(docs: list[dict]) -> str:
+    """Format retrieved artifact docs into a readable context block."""
+    if not docs:
+        return "(No relevant artifacts found)"
+    parts = []
+    for i, doc in enumerate(docs, 1):
+        name_en = doc.get("artifact_name_en", "")
+        name_ar = doc.get("artifact_name_ar", "")
+        hall = doc.get("hall_en", "N/A")
+        cat = doc.get("category_en", "N/A")
+        site = doc.get("discovery_site_en", "N/A")
+        desc = doc.get("description_en") or doc.get("description_ar") or ""
+        link = doc.get("link", "")
+        score = doc.get("relevance_score", "")
+
+        block = [
+            f"[{i}] {name_en} / {name_ar}",
+            f"    Hall: {hall}",
+            f"    Category: {cat}",
+            f"    Discovery Site: {site}",
+            f"    Description: {desc[:600]}",
+        ]
+        if link:
+            block.append(f"    Link: {link}")
+        if score:
+            block.append(f"    Relevance: {score}")
+        parts.append("\n".join(block))
+
+    return "\n\n".join(parts)
+
+
+def generate_answer(state: GraphState) -> GraphState:
+    """
+    Node 3 — Generator.
+
+    Reached when:
+      - relevance_score >= 0.5  (results are good enough), OR
+      - rewrite_count >= max    (max retries exhausted → best-effort answer)
+
+    Injects conversation_history (prior turns) into the message list so the
+    LLM has full context of the ongoing conversation.
+    Sets ``generation`` in state.
+    """
+    lang = state.get("language", "en")
+    question = state["original_query"]
+    docs = state.get("retrieved_docs", [])
+    score = state.get("relevance_score", 0.0)
+    rewrites = state.get("rewrite_count", 0)
+    history = state.get("conversation_history") or []
+
+    logger.info(
+        "Generator | lang=%s | relevance=%.2f | rewrites=%d | docs=%d | history=%d turns",
+        lang,
+        score,
+        rewrites,
+        len(docs),
+        len(history),
+    )
+
+    # Detect low-confidence retrieval: max rewrites used AND score still low
+    low_confidence = score < 0.5 and rewrites >= settings.max_rewrite_attempts
+
+    system_prompt = get_system_prompt(lang, low_confidence=low_confidence)
+    context = _build_artifact_context(docs)
+    user_msg = get_context_template(lang).format(context=context, question=question)
+
+    # Build messages: system → history (capped at last 6 turns) → current question
+    messages: list[dict] = [{"role": "system", "content": system_prompt}]
+
+    # Sanitise and cap history to last 6 messages (3 exchanges)
+    valid_roles = {"user", "assistant"}
+    for turn in history[-6:]:
+        role = turn.get("role", "")
+        content = turn.get("content", "")
+        if role in valid_roles and content:
+            messages.append({"role": role, "content": content})
+
+    messages.append({"role": "user", "content": user_msg})
+
+    try:
+        answer = _llm_call(messages, max_tokens=1200, temperature=0.4)
+    except Exception as exc:
+        logger.error("Generator LLM call failed: %s", exc)
+        answer = (
+            "عذرًا، حدث خطأ أثناء إنشاء الإجابة. يرجى المحاولة مرة أخرى."
+            if lang == "ar"
+            else "I'm sorry, an error occurred while generating the answer. Please try again."
+        )
+
+    return {**state, "generation": answer}
+

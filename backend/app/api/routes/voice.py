@@ -1,0 +1,131 @@
+"""Voice endpoint — POST /voice (STT → Corrective RAG → TTS)."""
+
+import io
+import logging
+
+from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
+
+from app.graph.graph import rag_graph
+from app.graph.state import GraphState
+from app.voice.stt import transcribe_audio
+from app.voice.tts import text_to_speech
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/voice", tags=["voice"])
+
+ALLOWED_AUDIO_TYPES = {
+    "audio/wav",
+    "audio/wave",
+    "audio/x-wav",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/webm",
+    "audio/ogg",
+    "application/octet-stream",
+}
+
+
+async def run_rag(query: str) -> dict:
+    """Invoke the LangGraph Corrective RAG graph and return normalised result."""
+    initial_state: GraphState = {
+        "original_query": query,
+        "rewritten_query": "",
+        "language": "en",
+        "retrieved_docs": [],
+        "relevance_score": 0.0,
+        "generation": "",
+        "rewrite_count": 0,
+    }
+    result = await rag_graph.ainvoke(initial_state)
+    return {
+        "answer": result["generation"],
+        "language": result["language"],
+        "rewrite_count": result["rewrite_count"],
+        "retrieved_docs": result["retrieved_docs"],
+    }
+
+
+@router.post("", summary="Voice query — STT → Corrective RAG → TTS")
+async def voice_query(file: UploadFile = File(...)) -> StreamingResponse:
+    """
+    Accept an audio file (WAV / MP3), run the full voice pipeline, and return
+    an MP3 audio response.
+
+    Pipeline:
+    1. **Groq Whisper** — transcribes the audio
+    2. **LangGraph Corrective RAG** — rewrite → retrieve+grade → generate
+    3. **Edge TTS** — synthesises the answer in the detected language
+    """
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_AUDIO_TYPES and not content_type.startswith("audio/"):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported audio type: {content_type}. Use WAV or MP3.",
+        )
+
+    audio_bytes = await file.read()
+    if not audio_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
+        )
+
+    logger.info(
+        "Voice request: filename=%s, size=%d bytes", file.filename, len(audio_bytes)
+    )
+
+    # Step 1 — Speech-to-Text
+    try:
+        transcript = await transcribe_audio(
+            audio_bytes, filename=file.filename or "audio.wav"
+        )
+    except Exception as exc:
+        logger.exception("STT failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Speech transcription failed: {str(exc)}",
+        )
+
+    if not transcript.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not transcribe audio. Please speak clearly.",
+        )
+
+    logger.info("Transcript: %s", transcript[:120])
+
+    # Step 2 — Corrective RAG
+    try:
+        rag_result = await run_rag(query=transcript)
+    except Exception as exc:
+        logger.exception("RAG graph failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"RAG pipeline failed: {str(exc)}",
+        )
+
+    response_text = rag_result["answer"]
+    language = rag_result["language"]
+
+    # Step 3 — Text-to-Speech
+    try:
+        audio_response = await text_to_speech(response_text, language)
+    except Exception as exc:
+        logger.exception("TTS failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Speech synthesis failed: {str(exc)}",
+        )
+
+    return StreamingResponse(
+        io.BytesIO(audio_response),
+        media_type="audio/mpeg",
+        headers={
+            "X-Transcript": transcript[:200],
+            "X-Response-Language": language,
+            "X-Rewrite-Count": str(rag_result.get("rewrite_count", 0)),
+            "Content-Disposition": "inline; filename=response.mp3",
+        },
+    )

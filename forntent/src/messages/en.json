@@ -1,0 +1,80 @@
+{
+  "welcome": {
+    "title": "BIBLIOTHECA ALEXANDRINA",
+    "subtitle": "Antiquities Museum",
+    "chooseLanguage": "Choose your language",
+    "english": "English",
+    "arabic": "عربي"
+  },
+  "sections": {
+    "title": "Our Collections",
+    "artifactCount": "{count} artifacts"
+  },
+  "artifacts": {
+    "searchPlaceholder": "Search artifacts...",
+    "viewDetails": "View Details",
+    "backToCollections": "← Collections"
+  },
+  "detail": {
+    "askAbout": "Ask About This Artifact",
+    "quickQuestions": "Quick questions:",
+    "q1": "When was it discovered?",
+    "q2": "What is it made of?",
+    "q3": "What is its historical significance?",
+    "q4": "Tell me more",
+    "inputPlaceholder": "Ask anything...",
+    "viewOnBibaAlex": "View on BibaAlex →",
+    "back": "← Back"
+  },
+  "ai": {
+    "senderName": "Alex",
+    "floatingTooltip": "Ask AI Guide",
+    "thinking": "Thinking..."
+  },
+  "admin": {
+    "brand": "Bibliotheca Alexandrina",
+    "brandSub": "Antiquities Registry",
+    "addArtifact": "Add Artifact",
+    "nav": {
+      "overview": "Overview",
+      "collection": "Collection",
+      "acquisitions": "Acquisitions",
+      "settings": "Settings",
+      "exit": "Exit to Museum",
+      "soon": "Soon"
+    },
+    "header": {
+      "search": "Search archives...",
+      "newEntry": "+ New Entry"
+    },
+    "new": {
+      "pageLabel": "Acquisition Protocol",
+      "pageTitle": "Register Artifact",
+      "registryDate": "Registry Date",
+      "sectionBasic": "Basic Information",
+      "sectionDetails": "Historical Record",
+      "sectionMedia": "Archival Image",
+      "nameLabel": "Artifact Name",
+      "namePlaceholder": "e.g. Canopic Jar of Imsety",
+      "categoryLabel": "Classification",
+      "categoryDefault": "Select a category...",
+      "cat1": "Statuary & Sculpture",
+      "cat2": "Adornment & Jewelry",
+      "cat3": "Papyrus & Manuscripts",
+      "cat4": "Ceramics & Vessels",
+      "descLabel": "Historical Context & Description",
+      "descPlaceholder": "Detail the provenance, material, and historical significance...",
+      "hallLabel": "Exhibition Hall",
+      "hallDefault": "Unassigned (Vault)",
+      "hall1": "Hall of the Ptolemies",
+      "hall2": "Pharaonic Antiquities",
+      "hall3": "Greco-Roman Gallery",
+      "mediaHint": "Upload high-resolution archival image. Will be shown in the public catalog.",
+      "uploadLabel": "Upload Master File",
+      "uploadHint": "Drag & drop or click to browse",
+      "uploadTypes": "TIFF, PNG, JPG up to 50MB",
+      "certify": "I certify that the provenance of this artifact has been verified according to the 1970 UNESCO Convention guidelines.",
+      "submit": "Register Artifact"
+    }
+  }
+}

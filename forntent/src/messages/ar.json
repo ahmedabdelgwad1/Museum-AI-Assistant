@@ -1,0 +1,80 @@
+{
+  "welcome": {
+    "title": "مكتبة الإسكندرية",
+    "subtitle": "متحف الآثار",
+    "chooseLanguage": "اختر لغتك",
+    "english": "English",
+    "arabic": "عربي"
+  },
+  "sections": {
+    "title": "مجموعاتنا",
+    "artifactCount": "{count} قطع"
+  },
+  "artifacts": {
+    "searchPlaceholder": "ابحث عن قطعة...",
+    "viewDetails": "عرض التفاصيل",
+    "backToCollections": "← المجموعات"
+  },
+  "detail": {
+    "askAbout": "اسأل عن هذه القطعة",
+    "quickQuestions": "أسئلة سريعة:",
+    "q1": "متى اكتشفت؟",
+    "q2": "من ماذا صُنعت؟",
+    "q3": "ما أهميتها التاريخية؟",
+    "q4": "أخبرني أكثر",
+    "inputPlaceholder": "اسأل أي شيء...",
+    "viewOnBibaAlex": "عرض في مكتبة الإسكندرية →",
+    "back": "← رجوع"
+  },
+  "ai": {
+    "senderName": "إسكندر",
+    "floatingTooltip": "اسأل المرشد الذكي",
+    "thinking": "يفكر..."
+  },
+  "admin": {
+    "brand": "مكتبة الإسكندرية",
+    "brandSub": "سجل الآثار",
+    "addArtifact": "إضافة قطعة",
+    "nav": {
+      "overview": "نظرة عامة",
+      "collection": "المجموعة",
+      "acquisitions": "الاقتناءات",
+      "settings": "الإعدادات",
+      "exit": "الخروج للمتحف",
+      "soon": "قريباً"
+    },
+    "header": {
+      "search": "ابحث في الأرشيف...",
+      "newEntry": "+ إدخال جديد"
+    },
+    "new": {
+      "pageLabel": "بروتوكول الاقتناء",
+      "pageTitle": "تسجيل قطعة أثرية",
+      "registryDate": "تاريخ التسجيل",
+      "sectionBasic": "المعلومات الأساسية",
+      "sectionDetails": "السجل التاريخي",
+      "sectionMedia": "الصورة الأرشيفية",
+      "nameLabel": "اسم القطعة الأثرية",
+      "namePlaceholder": "مثال: إناء كانوبي لإمستي",
+      "categoryLabel": "التصنيف",
+      "categoryDefault": "اختر تصنيفاً...",
+      "cat1": "التماثيل والمنحوتات",
+      "cat2": "الحلي والمجوهرات",
+      "cat3": "البردي والمخطوطات",
+      "cat4": "الخزف والأواني",
+      "descLabel": "السياق التاريخي والوصف",
+      "descPlaceholder": "تفاصيل المصدر، وتكوين المواد، والأهمية التاريخية...",
+      "hallLabel": "قاعة العرض",
+      "hallDefault": "غير محدد (الخزينة)",
+      "hall1": "قاعة البطالمة",
+      "hall2": "آثار الفراعنة",
+      "hall3": "قاعة اليونان والرومان",
+      "mediaHint": "ارفع صورة أرشيفية عالية الدقة. ستُعرض في الكتالوج العام.",
+      "uploadLabel": "رفع الملف الرئيسي",
+      "uploadHint": "اسحب وأفلت أو اضغط للاختيار",
+      "uploadTypes": "TIFF, PNG, JPG حتى 50MB",
+      "certify": "أشهد أن مصدر هذه القطعة قد تم التحقق منه وفقاً لاتفاقية اليونسكو لعام 1970.",
+      "submit": "تسجيل القطعة"
+    }
+  }
+}
