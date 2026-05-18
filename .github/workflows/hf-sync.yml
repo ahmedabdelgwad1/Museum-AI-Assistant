@@ -1,0 +1,35 @@
+name: Sync Backend to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+    # سيتم تشغيل هذا الأكشن فقط عند تعديل أي ملف داخل مجلد backend
+    paths:
+      - 'backend/**'
+  workflow_dispatch: # للسماح بتشغيله يدوياً إذا أردت
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Push Backend Folder to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
+        run: |
+          cd backend
+          
+          # تهيئة بيئة Git مؤقتة داخل مجلد الباك إند فقط
+          git init
+          git checkout -b main
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          
+          git add .
+          git commit -m "Auto-sync from GitHub Actions"
+          
+          # رفع الملفات بالإجبار لمساحة Hugging Face (لضمان التطابق التام)
+          git push -f https://user:$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_ID main
