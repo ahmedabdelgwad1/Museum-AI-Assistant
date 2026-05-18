@@ -49,9 +49,10 @@ async def lifespan(app: FastAPI):
         count = collection_count()
         logger.info("ChromaDB collection has %d artifacts indexed.", count)
         if count == 0:
-            logger.warning(
-                "Collection is empty! Run: python scripts/index_artifacts.py"
-            )
+            logger.warning("Collection is empty! Running auto-indexing...")
+            from scripts.index_artifacts import main as index_main
+            index_main()
+            logger.info("Auto-indexing complete!")
     except Exception as exc:
         logger.warning("ChromaDB status check failed: %s", exc)
 
