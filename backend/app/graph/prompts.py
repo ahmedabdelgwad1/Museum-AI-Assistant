@@ -158,7 +158,8 @@ def format_history_for_prompt(history: list[dict], max_turns: int = 6) -> str:
 
     lines = []
     for turn in history[-max_turns:]:
-        role = turn.get("role", "").capitalize()
+        raw_role = turn.get("role", "").lower()
+        role = "Assistant" if raw_role in ["ai", "assistant"] else raw_role.capitalize()
         content = turn.get("content", "").strip()
         if role and content:
             # Truncate long assistant messages to keep prompt lean

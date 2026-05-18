@@ -252,10 +252,12 @@ def generate_answer(state: GraphState) -> GraphState:
     messages: list[dict] = [{"role": "system", "content": system_prompt}]
 
     # Sanitise and cap history to last 6 messages (3 exchanges)
-    valid_roles = {"user", "assistant"}
+    valid_roles = {"user", "assistant", "ai"}
     for turn in history[-6:]:
         role = turn.get("role", "")
         content = turn.get("content", "")
+        if role == "ai":
+            role = "assistant"
         if role in valid_roles and content:
             messages.append({"role": role, "content": content})
 
