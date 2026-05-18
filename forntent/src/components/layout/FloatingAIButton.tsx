@@ -3,76 +3,30 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, X, Send, Mic } from "lucide-react";
 import { getDictionary, hFont, dir } from "@/lib/dictionaries";
+import { useChat } from "@/hooks/useChat";
 
 export function FloatingAIButton({ locale }: { locale: "en" | "ar" }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<{ role: "ai" | "user"; content: string }[]>([
-    {
-      role: "ai",
-      content:
-        locale === "ar"
-          ? "مرحباً بك في متحف مكتبة الإسكندرية. كيف يمكنني مساعدتك اليوم؟"
-          : "Welcome to the Bibliotheca Alexandrina Antiquities Museum. How can I assist you today?",
-    },
-  ]);
+  
+  // Use the real backend hook instead of mock messages
+  const { 
+    messages, 
+    input, 
+    setInput, 
+    sendMessage, 
+    isLoading, 
+    isRecording, 
+    startRecording, 
+    stopRecording 
+  } = useChat(null, locale);
+
   const dict = getDictionary(locale);
   const isAr = locale === "ar";
   const d = dir(locale);
 
+  // We can just use sendMessage directly
   const send = (msg: string) => {
-    if (!msg.trim()) return;
-    setMessages((p) => [...p, { role: "user" as const, content: msg }]);
-    setInput("");
-    setTimeout(() => {
-      setMessages((p) => [
-        ...p,
-        {
-          role: "ai" as const,
-          content: isAr
-            ? "شكراً لسؤالك. يمكنني مساعدتك في معرفة تفاصيل القطع الأثرية وتاريخها."
-            : "Thank you for your question. I can help you explore artifact details and historical context.",
-        },
-      ]);
-    }, 800);
-  };
-
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      let chunks: BlobPart[] = [];
-      
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-      
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        // Simulating sending to FastAPI
-        setMessages(p => [...p, { role: "user", content: isAr ? '🎤 رسالة صوتية...' : '🎤 Voice message...' }]);
-        setTimeout(() => {
-          setMessages(p => [...p, { role: "ai", content: isAr ? "[تم معالجة الصوت بـ Whisper] مرحباً، أنا إسكندر. كيف أساعدك؟" : "[Processed by Whisper] Hello, I am Alex. How can I help?" }]);
-        }, 1500);
-        stream.getTracks().forEach(t => t.stop());
-      };
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (err) {
-      alert(isAr ? 'حدث خطأ أثناء الوصول للمايكروفون.' : 'Error accessing microphone.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
+    sendMessage(msg);
   };
 
   return (
