@@ -18,8 +18,18 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const stopCurrentAudio = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+  };
 
   const startRecording = async () => {
+    stopCurrentAudio();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -84,6 +94,7 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
       
       const audioUrl = `data:audio/mp3;base64,${data.audio_base64}`;
       const audio = new Audio(audioUrl);
+      currentAudioRef.current = audio;
       audio.play();
 
       setMessages(prev => {
@@ -114,6 +125,7 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
   };
 
   const sendMessage = async (msg: string) => {
+    stopCurrentAudio();
     if (!msg.trim() || isLoading) return;
     
     setMessages(prev => [...prev, { role: 'user', content: msg }]);
@@ -154,6 +166,7 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
       if (data.audio_base64) {
         const audioUrl = `data:audio/mp3;base64,${data.audio_base64}`;
         const audio = new Audio(audioUrl);
+        currentAudioRef.current = audio;
         audio.play();
       }
 
