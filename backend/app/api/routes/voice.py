@@ -27,7 +27,7 @@ ALLOWED_AUDIO_TYPES = {
 }
 
 
-async def run_rag(query: str) -> dict:
+async def run_rag(query: str, conversation_history: list[dict] | None = None) -> dict:
     """Invoke the LangGraph Corrective RAG graph and return normalised result."""
     initial_state: GraphState = {
         "original_query": query,
@@ -37,6 +37,7 @@ async def run_rag(query: str) -> dict:
         "relevance_score": 0.0,
         "generation": "",
         "rewrite_count": 0,
+        "conversation_history": conversation_history or [],
     }
     result = await rag_graph.ainvoke(initial_state)
     return {
@@ -47,8 +48,14 @@ async def run_rag(query: str) -> dict:
     }
 
 
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import JSONResponse
+
 @router.post("", summary="Voice query — STT → Corrective RAG → TTS")
-async def voice_query(file: UploadFile = File(...)) -> StreamingResponse:
+async def voice_query(
+    file: UploadFile = File(...),
+    conversation_history: str = Form(None)
+) -> JSONResponse:
     """
     Accept an audio file (WAV / MP3), run the full voice pipeline, and return
     an MP3 audio response.
@@ -97,8 +104,16 @@ async def voice_query(file: UploadFile = File(...)) -> StreamingResponse:
     logger.info("Transcript: %s", transcript[:120])
 
     # Step 2 — Corrective RAG
+    history_list = []
+    if conversation_history:
+        import json
+        try:
+            history_list = json.loads(conversation_history)
+        except Exception as e:
+            logger.warning("Failed to parse conversation history in voice query: %s", e)
+
     try:
-        rag_result = await run_rag(query=transcript)
+        rag_result = await run_rag(query=transcript, conversation_history=history_list)
     except Exception as exc:
         logger.exception("RAG graph failed: %s", exc)
         raise HTTPException(

@@ -70,8 +70,12 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
 
     try {
       const formData = new FormData();
-      // append the audio file. Make sure the backend expects 'file' parameter.
       formData.append("file", audioBlob, "audio.webm");
+
+      const historyToSend = messages
+        .filter(m => m.content !== dict.ai.thinking && !m.content.includes('رسالة صوتية') && !m.content.includes('Voice message'))
+        .map(m => ({ role: m.role, content: m.content }));
+      formData.append("conversation_history", JSON.stringify(historyToSend));
       
       setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
 
@@ -135,6 +139,10 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
     setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
 
     try {
+      const historyToSend = messages
+        .filter(m => m.content !== dict.ai.thinking && !m.content.includes('رسالة صوتية') && !m.content.includes('Voice message'))
+        .map(m => ({ role: m.role, content: m.content }));
+
       const API_URL = "https://ahmed3182004-museum-backend.hf.space";
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
@@ -143,7 +151,8 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
         },
         body: JSON.stringify({
           query: msg,
-          language: locale
+          language: locale,
+          conversation_history: historyToSend
         }),
       });
 
