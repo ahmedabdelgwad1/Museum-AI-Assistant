@@ -16,10 +16,11 @@ _groq_client: Optional[Groq] = None
 
 
 def get_groq_client() -> Groq:
-    """Return singleton Groq client."""
+    """Return singleton Groq client using the first configured API key."""
     global _groq_client
     if _groq_client is None:
-        _groq_client = Groq(api_key=settings.groq_api_key)
+        keys = settings.groq_api_keys
+        _groq_client = Groq(api_key=keys[0] if keys else settings.groq_api_key)
     return _groq_client
 
 

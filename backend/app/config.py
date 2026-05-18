@@ -8,8 +8,13 @@ from pydantic import Field
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    # Groq API
+    # Groq API — supports comma-separated list for rotation on rate-limit
     groq_api_key: str = Field(..., env="GROQ_API_KEY")
+
+    @property
+    def groq_api_keys(self) -> list[str]:
+        """Return a list of all configured Groq API keys."""
+        return [k.strip() for k in self.groq_api_key.split(",") if k.strip()]
 
     # ChromaDB
     chroma_persist_dir: str = Field(default="./data/chroma_db", env="CHROMA_PERSIST_DIR")

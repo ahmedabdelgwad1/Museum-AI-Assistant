@@ -27,36 +27,60 @@ from app.utils.language import detect_language
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Shared Groq client (singleton)
+# Shared Groq clients (one per API key, lazy-initialised)
 # ---------------------------------------------------------------------------
 
-_groq_client: Optional[Groq] = None
+_groq_clients: list[Groq] = []
+_current_key_index: int = 0
 
 
-def _get_client() -> Groq:
-    global _groq_client
-    if _groq_client is None:
-        _groq_client = Groq(api_key=settings.groq_api_key)
-    return _groq_client
+def _get_clients() -> list[Groq]:
+    global _groq_clients
+    if not _groq_clients:
+        keys = settings.groq_api_keys
+        if not keys:
+            raise ValueError("No GROQ_API_KEY configured.")
+        _groq_clients = [Groq(api_key=k) for k in keys]
+        logger.info("Initialised %d Groq client(s) for key rotation.", len(_groq_clients))
+    return _groq_clients
 
 
 def _llm_call(messages: list[dict], max_tokens: int = 512, temperature: float = 0.2) -> str:
     """
-    Thin wrapper around the Groq chat completions API.
-    Returns the assistant message content string.
+    Thin wrapper around the Groq chat completions API with automatic
+    API key rotation on RateLimitError (HTTP 429).
+    Tries each configured key in order; raises if all keys are exhausted.
     """
-    client = _get_client()
-    try:
-        completion = client.chat.completions.create(
-            model=settings.llm_model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        return completion.choices[0].message.content or ""
-    except Exception as exc:
-        logger.error("Groq LLM call failed: %s", exc)
-        raise
+    global _current_key_index
+    from groq import RateLimitError
+
+    clients = _get_clients()
+    num_keys = len(clients)
+
+    for attempt in range(num_keys):
+        idx = (_current_key_index + attempt) % num_keys
+        client = clients[idx]
+        try:
+            completion = client.chat.completions.create(
+                model=settings.llm_model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            _current_key_index = idx  # remember last working key
+            return completion.choices[0].message.content or ""
+        except RateLimitError as exc:
+            logger.warning(
+                "Rate limit hit on key #%d (%s). Trying next key...", idx, str(exc)[:80]
+            )
+            _current_key_index = (idx + 1) % num_keys  # advance to next key
+        except Exception as exc:
+            logger.error("Groq LLM call failed on key #%d: %s", idx, exc)
+            raise
+
+    # All keys exhausted
+    logger.error("All %d Groq API key(s) are rate-limited.", num_keys)
+    raise RuntimeError("All Groq API keys have reached their rate limit. Please try again later.")
 
 
 # ---------------------------------------------------------------------------
