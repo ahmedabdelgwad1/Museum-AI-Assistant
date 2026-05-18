@@ -55,32 +55,56 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
   };
 
   const sendAudioToFastAPI = async (audioBlob: Blob) => {
-    // Show user a message indicating audio is being processed
     setMessages(prev => [...prev, { role: 'user', content: locale === 'ar' ? '🎤 رسالة صوتية...' : '🎤 Voice message...' }]);
     setIsLoading(true);
 
-    // Placeholder: This is where you will send the `audioBlob` to your FastAPI server
-    // const formData = new FormData();
-    // formData.append("file", audioBlob, "audio.webm");
-    // const response = await fetch("http://YOUR_FASTAPI_URL/transcribe_and_chat", { method: "POST", body: formData });
-    
-    // Simulating backend delay for Whisper + LLM
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      // append the audio file. Make sure the backend expects 'file' parameter.
+      formData.append("file", audioBlob, "audio.webm");
+      
       setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
-      setTimeout(() => {
-        setMessages(prev => {
-          const newMsgs = [...prev];
-          newMsgs[newMsgs.length - 1] = { 
-            role: 'ai', 
-            content: locale === 'en' 
-              ? "[Audio Processed by Whisper] This is a simulated response based on your audio." 
-              : "[تم معالجة الصوت بـ Whisper] هذا رد تجريبي بناءً على رسالتك الصوتية." 
-          };
-          return newMsgs;
-        });
-        setIsLoading(false);
-      }, 1000);
-    }, 1500);
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/voice`, { 
+        method: "POST", 
+        body: formData 
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to process voice query");
+      }
+
+      // The backend /voice endpoint returns a StreamingResponse (audio file)
+      // and puts the transcript in the headers. We can play the audio if needed.
+      const transcript = response.headers.get("X-Transcript") || "";
+      const blob = await response.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      
+      // Play the audio automatically
+      const audio = new Audio(audioUrl);
+      audio.play();
+
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { 
+          role: 'ai', 
+          content: locale === 'en' 
+            ? `[Audio Processed] Your audio was transcribed as: "${transcript}". (Playing response...)` 
+            : `[تم معالجة الصوت] سؤالك كان: "${transcript}". (يتم تشغيل الرد...)`
+        };
+        return newMsgs;
+      });
+    } catch (error) {
+      console.error("Error sending voice:", error);
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { role: 'ai', content: locale === 'ar' ? 'حدث خطأ في معالجة الصوت.' : 'Error processing voice.' };
+        return newMsgs;
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const sendMessage = async (msg: string) => {
@@ -90,23 +114,56 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
     setInput('');
     setIsLoading(true);
 
-    // Placeholder simulated response, to be connected to FastAPI later
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
-      setTimeout(() => {
-        setMessages(prev => {
-          const newMsgs = [...prev];
-          newMsgs[newMsgs.length - 1] = { 
-            role: 'ai', 
-            content: locale === 'en' 
-              ? "This is a placeholder response from Alex. I can provide historical context and details." 
-              : "هذا رد تجريبي من إسكندر. يمكنني تزويدك بمعلومات تاريخية وتفاصيل أثرية." 
-          };
-          return newMsgs;
-        });
-        setIsLoading(false);
-      }, 1000);
-    }, 500);
+    setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const response = await fetch(`${API_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: msg,
+          language: locale
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+      
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { 
+          role: 'ai', 
+          content: data.response || "No response received" 
+        };
+        return newMsgs;
+      });
+
+      // If the backend returns audio_base64, play it
+      if (data.audio_base64) {
+        const audioUrl = `data:audio/mp3;base64,${data.audio_base64}`;
+        const audio = new Audio(audioUrl);
+        audio.play();
+      }
+
+    } catch (error) {
+      console.error("Error fetching chat:", error);
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { 
+          role: 'ai', 
+          content: locale === 'ar' ? 'حدث خطأ في الاتصال بالخادم.' : 'Error connecting to the server.' 
+        };
+        return newMsgs;
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return {
