@@ -1,3 +1,12 @@
+---
+title: Museum Backend
+emoji: 🏛️
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # 🏛️ Bibliotheca Alexandrina Museum RAG API
 
 A **Corrective RAG** chatbot powered by **LangGraph** for the **Bibliotheca Alexandrina Antiquities Museum**. Supports both **Arabic** and **English** queries via text and voice.
