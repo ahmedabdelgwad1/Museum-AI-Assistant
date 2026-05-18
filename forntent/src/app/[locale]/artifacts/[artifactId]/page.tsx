@@ -18,21 +18,21 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
     console.error(e);
   }
 
-  if (!artifact) {
-    artifact = {
-      id: artifactId,
-      artifact_name_en: "Golden Mask of Tutankhamun",
-      artifact_name_ar: "القناع الذهبي للملك توت عنخ آمون",
-      description_en: "The mask of Tutankhamun is a gold death mask of the 18th-dynasty ancient Egyptian Pharaoh Tutankhamun (reigned 1332–1323 BC). It was discovered by Howard Carter in 1925 in tomb KV62 in the Valley of the Kings, and is now housed in the Egyptian Museum in Cairo. The mask is one of the most well-known works of art in the world.",
-      description_ar: "قناع توت عنخ آمون هو قناع جنائزي ذهبي للفرعون المصري القديم توت عنخ آمون (الذي حكم 1332-1323 قبل الميلاد). اكتشفه هوارد كارتر في عام 1925 في المقبرة KV62 في وادي الملوك، وهو الآن محفوظ في المتحف المصري بالقاهرة.",
-      category_en: "Mask",
-      category_ar: "قناع",
-      discovery_site_en: "Valley of the Kings",
-      discovery_site_ar: "وادي الملوك",
-      hall_en: "Royal Hall",
-      hall_ar: "القاعة الملكية",
-      link: "#"
-    };
+  if (!artifact || artifact.detail) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-[var(--color-gold)] text-6xl mb-4">🏺</p>
+            <h1 className="text-2xl text-[var(--color-text-primary)] font-[family-name:var(--font-cinzel)] mb-2">Artifact Not Found</h1>
+            <p className="text-[var(--color-text-secondary)] mb-6">Could not load artifact data. The server may be offline.</p>
+            <Link href={`/${locale}/sections`} className="text-[var(--color-gold)] border border-[var(--color-gold)] px-4 py-2 rounded hover:bg-[var(--color-gold)] hover:text-black transition-colors">
+              Back to Collections
+            </Link>
+          </div>
+        </div>
+      </PageTransition>
+    );
   }
 
   const name = locale === 'en' ? artifact.artifact_name_en : artifact.artifact_name_ar;

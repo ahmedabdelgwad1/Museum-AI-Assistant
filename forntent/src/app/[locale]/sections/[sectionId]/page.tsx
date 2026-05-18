@@ -39,24 +39,22 @@ export default async function ArtifactsPage({
     console.error(e);
   }
 
-  // High quality images from the Stitch design
-  const STITCH_IMAGES = [
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuAhROrevFarT9SAER_RuSVymsFApiTg6ZevaYJQ4zEl8RNyYP1QNErtYn6cGDUKqESNPrR8qO01URfpg866H_YfpPmNqYU_iW8YbGAFx0sEty-sue_2FxUnGg7zJL7CFdwuz9Hh03HyqclVousYFW-voIdTuZZ_xSiuJ0PSDmHWVajmusa05JHiLfmYdvQysS60Xtmr3MZvdg-AAwWF_5ql8lFf5lwWjPKmauYh5DE_AwJv9Augu1dYvzybtDvzKHKi2CoG3Sw183OF",
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuDnVnEJOV7f67-JBX-L7xMw1GW1wYRzPp-3ghDFoO3-S5ngWoH0Podlk0qn2WOJY2HyHgHjFedak6krquX2rqLv6g-YO_oC37D0YM4d-jQKGCTPhZLdJt6lZ7xlZsy8qgr9lVQEv13jIVPcmqGgKQX8WZ3kBFZW-3fRq2-dedZsAR3TMCzrNY6VOGxArdntAYuyTKrvQVFOHAQLjv75rATCjGy2kLjHSqKqGY2hobxQq4sNl05UnlnKp2nZGiwBoTk_12FpmCm9OD19",
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuBSzfdBTaxs4ZOLygr18MfUMbaZ05AM0Y22lk8VyX2C4971mNEsA1zT83XgxktypaEMWBkcRf5gA8dAxtOn2CdzYQRuXvxlYqMJwX9cRk4p2c31dlBPvPuPWAjJGfRjNkuPRq_Q8DGjdZkUM3RE9VvGP27LbksLBrofDtbw13uj9tRjziwKP47aYqUWHfmmuxG_8KryoJ7F1qvXJwYqKq1tqk16KY6DIJ3RH_A5Bo8ST8VOb6A-Cj5QwgUtTT1bdFwM6F6IJAXsDD1H",
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuDlCv4xtBPsys-QYyhHFkZyVEkkTiy5jjV1gcAa3EW8oTKJ0ZFWjE_1sMpWWjQ-4CxE5pN8Nvy68QxnrYD5JcnZR6zrRaDkNgZzghQV2-HjzXpKdog5EGHratQLXlktj5IYDhMUkklhTCxD0lLU4hniHEdm3Rlr7NGAko7OlYkzskOSRoZMby9M4k0s9XUj_k-Wfr0ceyEyYauvKNBv0EqHbb6GCFzia1BRC8EQLQOcOAbuGI8TGOCjHDi1Wc5Rtxoy0h2Uj9Vu5RbV"
-  ];
 
   if (!Array.isArray(artifacts) || artifacts.length === 0) {
-    artifacts = Array.from({ length: 8 }).map((_, i) => ({
-      id: `${i}`,
-      section_number: parseInt(sectionId),
-      artifact_name_en: `Artifact ${i + 1}`,
-      artifact_name_ar: `القطعة ${i + 1}`,
-      hall_en: "Main Hall",
-      hall_ar: "القاعة الرئيسية",
-      image_url: STITCH_IMAGES[i % 4]
-    }));
+    return (
+      <PageTransition>
+        <div className="min-h-screen bg-[var(--color-bg-primary)] papyrus-texture w-full flex flex-col items-center justify-center">
+          <p className="text-[var(--color-gold)] text-6xl mb-4">🏛️</p>
+          <h1 className="text-2xl text-[var(--color-text-primary)] font-[family-name:var(--font-cinzel)] mb-2">No Artifacts Found</h1>
+          <p className="text-[var(--color-text-secondary)] mb-6">
+            {isAr ? "تعذّر تحميل البيانات. قد يكون الخادم غير متاح." : "Could not load artifacts. The server may be offline."}
+          </p>
+          <Link href={`/${locale}/sections`} className="text-[var(--color-gold)] border border-[var(--color-gold)] px-4 py-2 rounded hover:bg-[var(--color-gold)] hover:text-black transition-colors">
+            {isAr ? "العودة للمجموعات" : "Back to Collections"}
+          </Link>
+        </div>
+      </PageTransition>
+    );
   }
 
   return (
