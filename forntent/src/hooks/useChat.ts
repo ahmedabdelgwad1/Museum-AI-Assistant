@@ -80,24 +80,24 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
         throw new Error(errorDetail);
       }
 
-      // The backend /voice endpoint returns a StreamingResponse (audio file)
-      // and puts the transcript in the headers. We can play the audio if needed.
-      const transcript = response.headers.get("X-Transcript") || "";
-      const blob = await response.blob();
-      const audioUrl = URL.createObjectURL(blob);
+      const data = await response.json();
       
-      // Play the audio automatically
+      const audioUrl = `data:audio/mp3;base64,${data.audio_base64}`;
       const audio = new Audio(audioUrl);
       audio.play();
 
       setMessages(prev => {
         const newMsgs = [...prev];
-        newMsgs[newMsgs.length - 1] = { 
-          role: 'ai', 
-          content: locale === 'en' 
-            ? `[Audio Processed] Your audio was transcribed as: "${transcript}". (Playing response...)` 
-            : `[تم معالجة الصوت] سؤالك كان: "${transcript}". (يتم تشغيل الرد...)`
-        };
+        // Remove the "Thinking..." message
+        newMsgs.pop(); 
+        // Remove the "Voice message..." message
+        newMsgs.pop(); 
+
+        // Add the actual transcript as a user message
+        newMsgs.push({ role: 'user', content: data.transcript });
+        // Add the AI response text
+        newMsgs.push({ role: 'ai', content: data.response });
+        
         return newMsgs;
       });
     } catch (error: any) {

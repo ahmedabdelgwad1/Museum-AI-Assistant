@@ -119,13 +119,15 @@ async def voice_query(file: UploadFile = File(...)) -> StreamingResponse:
             detail=f"Speech synthesis failed: {str(exc)}",
         )
 
-    return StreamingResponse(
-        io.BytesIO(audio_response),
-        media_type="audio/mpeg",
-        headers={
-            "X-Transcript": transcript[:200],
-            "X-Response-Language": language,
-            "X-Rewrite-Count": str(rag_result.get("rewrite_count", 0)),
-            "Content-Disposition": "inline; filename=response.mp3",
-        },
+    import base64
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        content={
+            "transcript": transcript,
+            "response": response_text,
+            "language": language,
+            "rewrite_count": rag_result.get("rewrite_count", 0),
+            "audio_base64": base64.b64encode(audio_response).decode("utf-8"),
+        }
     )
