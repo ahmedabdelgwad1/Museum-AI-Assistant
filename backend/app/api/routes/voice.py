@@ -10,6 +10,7 @@ from app.graph.graph import rag_graph
 from app.graph.state import GraphState
 from app.voice.stt import transcribe_audio
 from app.voice.tts import text_to_speech
+from app.utils.language import detect_language
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +28,12 @@ ALLOWED_AUDIO_TYPES = {
 }
 
 
-async def run_rag(query: str, conversation_history: list[dict] | None = None) -> dict:
+async def run_rag(query: str, language: str = "ar", conversation_history: list[dict] | None = None) -> dict:
     """Invoke the LangGraph Corrective RAG graph and return normalised result."""
     initial_state: GraphState = {
         "original_query": query,
         "rewritten_query": "",
-        "language": "en",
+        "language": language,
         "retrieved_docs": [],
         "relevance_score": 0.0,
         "generation": "",
@@ -112,8 +113,12 @@ async def voice_query(
         except Exception as e:
             logger.warning("Failed to parse conversation history in voice query: %s", e)
 
+    # Detect language from the transcript itself (most reliable signal)
+    detected_lang = detect_language(transcript)
+    logger.info("Detected language from transcript: %s", detected_lang)
+
     try:
-        rag_result = await run_rag(query=transcript, conversation_history=history_list)
+        rag_result = await run_rag(query=transcript, language=detected_lang, conversation_history=history_list)
     except Exception as exc:
         logger.exception("RAG graph failed: %s", exc)
         raise HTTPException(
