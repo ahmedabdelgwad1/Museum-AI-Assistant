@@ -72,7 +72,12 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to process voice query");
+        let errorDetail = "Failed to process voice query";
+        try {
+          const errBody = await response.json();
+          if (errBody.detail) errorDetail = errBody.detail;
+        } catch (e) {}
+        throw new Error(errorDetail);
       }
 
       // The backend /voice endpoint returns a StreamingResponse (audio file)
@@ -95,11 +100,12 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
         };
         return newMsgs;
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending voice:", error);
       setMessages(prev => {
         const newMsgs = [...prev];
-        newMsgs[newMsgs.length - 1] = { role: 'ai', content: locale === 'ar' ? 'حدث خطأ في معالجة الصوت.' : 'Error processing voice.' };
+        const errorMessage = error.message || (locale === 'ar' ? 'حدث خطأ في معالجة الصوت.' : 'Error processing voice.');
+        newMsgs[newMsgs.length - 1] = { role: 'ai', content: `[Error] ${errorMessage}` };
         return newMsgs;
       });
     } finally {
