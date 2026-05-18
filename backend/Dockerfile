@@ -21,3 +21,5 @@ EXPOSE 7860
 
 # تشغيل السيرفر
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+
+# Trigger GitHub Action
