@@ -4,7 +4,7 @@ import difflib
 import logging
 from typing import List, Optional
 
-from app.rag.vectorstore import get_collection
+from app.rag.vectorstore import list_all
 from app.config import settings
 from groq import Groq
 
@@ -18,15 +18,14 @@ _ALL_NAMES_AR: List[str] = []
 
 
 def _load_names() -> None:
-    """Load all artifact names from ChromaDB into memory."""
+    """Load all artifact names from Supabase into memory."""
     global _KEYWORDS_EN, _KEYWORDS_AR, _ALL_NAMES_EN, _ALL_NAMES_AR
     if _KEYWORDS_EN is not None:
         return
 
     try:
-        collection = get_collection()
-        # Fetch all metadata
-        result = collection.get(include=["metadatas"])
+        # Fetch all metadata from Supabase
+        result = list_all(limit=1000)
         metadatas = result.get("metadatas", [])
         
         en_names = set()
@@ -46,14 +45,13 @@ def _load_names() -> None:
         _ALL_NAMES_EN = list(en_names)
         _ALL_NAMES_AR = list(ar_names)
         
-        # Create comma-separated strings for Whisper prompt (max ~200 chars is usually good, but we can pass more)
-        # Whisper prompt is limited to 224 tokens, so we'll just pass a joined string.
+        # Create comma-separated strings for Whisper prompt
         _KEYWORDS_EN = ", ".join(_ALL_NAMES_EN)
         _KEYWORDS_AR = ", ".join(_ALL_NAMES_AR)
         
         logger.info("Loaded %d English and %d Arabic artifact names for STT hints.", len(en_names), len(ar_names))
     except Exception as exc:
-        logger.error("Failed to load artifact names from ChromaDB: %s", exc)
+        logger.error("Failed to load artifact names from Supabase: %s", exc)
         _KEYWORDS_EN = ""
         _KEYWORDS_AR = ""
 
