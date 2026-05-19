@@ -1,8 +1,10 @@
 "use client";
 import Image from "next/image";
 import { User, Settings as Tune, Shield, Camera, Check, Key, QrCode, LogOut } from "lucide-react";
-import { getDictionary } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function AdminSettings() {
   const { locale, setLocale } = useAdminLocale();
@@ -14,7 +16,32 @@ export default function AdminSettings() {
     ? "font-[family-name:var(--font-arabic)]"
     : "font-[family-name:var(--font-body-md)]";
 
-  // Inline bilingual labels — settings page has lots of static copy
+  const supabase = createClient();
+  const router = useRouter();
+
+  const [userEmail, setUserEmail] = useState("");
+  const [userName, setUserName] = useState("");
+  const [userTitle, setUserTitle] = useState("");
+
+  useEffect(() => {
+    async function fetchUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || "");
+        // If they have metadata set, use it, otherwise fallback
+        setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || "Museum Curator");
+        setUserTitle(isRTL ? "كبير أمناء المتحف" : "Chief Curator of Antiquities");
+      }
+    }
+    fetchUser();
+  }, [isRTL]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/admin/login");
+  };
+
+  // Inline bilingual labels
   const labels = {
     pageTitle:     isRTL ? "الإعدادات"                                        : "Settings",
     pageSubtitle:  isRTL ? "أدر ملفك الشخصي وبروتوكولات الأمان وتفضيلات النظام لبوابة أرشيف الإسكندرية." : "Manage your curatorial profile, security protocols, and system preferences for the Alexandria Archive portal.",
@@ -42,7 +69,7 @@ export default function AdminSettings() {
     twoFA:         isRTL ? "المصادقة الثنائية"                               : "Two-Factor Authentication",
     twoFASub:      isRTL ? "اطلب رمز تحقق ثانوياً عند الوصول من موقع غير معروف." : "Require a secondary verification codex when accessing the archive from an unknown location.",
     recoveryRunes: isRTL ? "توليد رموز الاسترداد"                            : "Generate Recovery Runes",
-    terminateSessions: isRTL ? "إنهاء جميع الجلسات النشطة"                  : "Terminate All Active Sessions",
+    terminateSessions: isRTL ? "تسجيل الخروج وإنهاء الجلسة"                  : "Sign Out & Terminate Session",
   };
 
   return (
@@ -101,31 +128,52 @@ export default function AdminSettings() {
 
               {/* Form */}
               <form className="flex-1 w-full space-y-8 mt-6 md:mt-0">
-                {[
-                  { id: "full_name", label: labels.fullName, type: "text",  value: isRTL ? "د. إلياس ثورن" : "Dr. Elias Thorne",                     readOnly: false },
-                  { id: "inst_email", label: labels.email, type: "email", value: "e.thorne@alexandria-archive.org",                                    readOnly: false },
-                  { id: "job_title", label: labels.title, type: "text",  value: isRTL ? "كبير أمناء المتحف" : "Chief Curator of Antiquities",          readOnly: true  },
-                ].map(({ id, label, type, value, readOnly }) => (
-                  <div key={id} className="relative group">
-                    <label
-                      htmlFor={id}
-                      className={`block ${hClass} text-xs text-[var(--color-primary)]/60 uppercase tracking-widest mb-2 group-focus-within:text-[var(--color-primary)] transition-colors`}
-                    >
-                      {label}
-                    </label>
-                    <input
-                      id={id}
-                      type={type}
-                      defaultValue={value}
-                      readOnly={readOnly}
-                      dir={isRTL ? "rtl" : "ltr"}
-                      className={`w-full bg-transparent border-0 border-b border-[var(--color-outline-variant)] focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-xl text-[var(--color-on-surface)] transition-colors outline-none ${readOnly ? "opacity-60 cursor-not-allowed" : ""} ${isRTL ? "font-[family-name:var(--font-arabic)] text-right" : "font-[family-name:var(--font-body-lg)]"}`}
-                    />
-                    {readOnly && (
-                      <p className={`text-xs text-[var(--color-on-surface-variant)]/50 mt-2 ${bodyClass} italic`}>{labels.titleNote}</p>
-                    )}
-                  </div>
-                ))}
+                {/* Full Name */}
+                <div className="relative group">
+                  <label htmlFor="full_name" className={`block ${hClass} text-xs text-[var(--color-primary)]/60 uppercase tracking-widest mb-2 group-focus-within:text-[var(--color-primary)] transition-colors`}>
+                    {labels.fullName}
+                  </label>
+                  <input
+                    id="full_name"
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    dir={isRTL ? "rtl" : "ltr"}
+                    className={`w-full bg-transparent border-0 border-b border-[var(--color-outline-variant)] focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-xl text-[var(--color-on-surface)] transition-colors outline-none ${isRTL ? "font-[family-name:var(--font-arabic)] text-right" : "font-[family-name:var(--font-body-lg)]"}`}
+                  />
+                </div>
+                
+                {/* Email */}
+                <div className="relative group">
+                  <label htmlFor="inst_email" className={`block ${hClass} text-xs text-[var(--color-primary)]/60 uppercase tracking-widest mb-2 group-focus-within:text-[var(--color-primary)] transition-colors`}>
+                    {labels.email}
+                  </label>
+                  <input
+                    id="inst_email"
+                    type="email"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
+                    dir="ltr"
+                    className={`w-full bg-transparent border-0 border-b border-[var(--color-outline-variant)] focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-xl text-[var(--color-on-surface)] transition-colors outline-none font-[family-name:var(--font-body-lg)]`}
+                  />
+                </div>
+
+                {/* Job Title (Read Only) */}
+                <div className="relative group">
+                  <label htmlFor="job_title" className={`block ${hClass} text-xs text-[var(--color-primary)]/60 uppercase tracking-widest mb-2 group-focus-within:text-[var(--color-primary)] transition-colors`}>
+                    {labels.title}
+                  </label>
+                  <input
+                    id="job_title"
+                    type="text"
+                    value={userTitle}
+                    readOnly
+                    dir={isRTL ? "rtl" : "ltr"}
+                    className={`w-full bg-transparent border-0 border-b border-[var(--color-outline-variant)] focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-xl text-[var(--color-on-surface)] transition-colors outline-none opacity-60 cursor-not-allowed ${isRTL ? "font-[family-name:var(--font-arabic)] text-right" : "font-[family-name:var(--font-body-lg)]"}`}
+                  />
+                  <p className={`text-xs text-[var(--color-on-surface-variant)]/50 mt-2 ${bodyClass} italic`}>{labels.titleNote}</p>
+                </div>
+
                 <div className="pt-2">
                   <button type="button" className={`border-2 border-[var(--color-primary)] text-[var(--color-primary)] ${hClass} text-xs uppercase tracking-widest px-8 py-3 hover:bg-[var(--color-primary)] hover:text-[#0a0a0f] transition-all duration-300`}>
                     {labels.saveBtn}
@@ -234,7 +282,11 @@ export default function AdminSettings() {
 
               {/* Terminate sessions */}
               <div className="pt-6 border-t border-[var(--color-outline-variant)]/30 mt-auto">
-                <button type="button" className={`w-full border border-[var(--color-error)]/50 text-[var(--color-error)]/80 ${hClass} text-xs uppercase tracking-widest px-6 py-4 hover:bg-[var(--color-error)]/10 hover:text-[var(--color-error)] hover:border-[var(--color-error)] transition-all duration-300 flex items-center justify-center gap-3`}>
+                <button 
+                  type="button" 
+                  onClick={handleLogout}
+                  className={`w-full border border-[var(--color-error)]/50 text-[var(--color-error)]/80 ${hClass} text-xs uppercase tracking-widest px-6 py-4 hover:bg-[var(--color-error)]/10 hover:text-[var(--color-error)] hover:border-[var(--color-error)] transition-all duration-300 flex items-center justify-center gap-3`}
+                >
                   <LogOut className="w-5 h-5" /> {labels.terminateSessions}
                 </button>
               </div>
