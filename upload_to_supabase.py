@@ -10,10 +10,14 @@ from sentence_transformers import SentenceTransformer
 from supabase import create_client
 
 # =============================================
-# إعدادات Supabase
+# إعدادات Supabase (يتم قراءتها من البيئة للأمان)
 # =============================================
-SUPABASE_URL = "https://fyeoccqyylbomsmwjwxh.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5ZW9jY3F5eWxib21zbXdqd3hoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTEyOTA0NCwiZXhwIjoyMDk0NzA1MDQ0fQ.p9AbJJvOCuPTcsQXY-q50LqKgQsLW40QaNqchngplFM"
+import os
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://fyeoccqyylbomsmwjwxh.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
+if not SUPABASE_KEY:
+    SUPABASE_KEY = input("🔑 الرجاء إدخال Supabase Service Role Key: ").strip()
 
 # نفس الموديل المستخدم في الباك إند (768 بُعد)
 EMBEDDING_MODEL = "intfloat/multilingual-e5-base"

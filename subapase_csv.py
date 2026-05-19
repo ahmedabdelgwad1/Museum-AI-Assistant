@@ -5,8 +5,12 @@ from supabase.client import Client, create_client
 import os
 
 # بيانات الاتصال بـ Supabase
-supabase_url = "https://fyeoccqyylbomsmwjwxh.supabase.co"
-supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5ZW9jY3F5eWxib21zbXdqd3hoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTEyOTA0NCwiZXhwIjoyMDk0NzA1MDQ0fQ.p9AbJJvOCuPTcsQXY-q50LqKgQsLW40QaNqchngplFM" # استخدم الـ Service Role عشان تقدر تكتب في الـ DB
+supabase_url = os.environ.get("SUPABASE_URL", "https://fyeoccqyylbomsmwjwxh.supabase.co")
+supabase_key = os.environ.get("SUPABASE_KEY", "") # استخدم الـ Service Role عشان تقدر تكتب في الـ DB
+
+if not supabase_key:
+    supabase_key = input("🔑 الرجاء إدخال Supabase Service Role Key: ").strip()
+
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # 1. قراءة الـ CSV
