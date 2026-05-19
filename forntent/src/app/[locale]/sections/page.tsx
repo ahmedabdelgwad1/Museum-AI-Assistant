@@ -3,15 +3,17 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { FloatingAIButton } from "@/components/layout/FloatingAIButton";
 import { SectionCard } from "@/components/features/sections/SectionCard";
 import { getDictionary } from "@/lib/dictionaries";
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
-const sections = [
-  { id: 38, nameEn: "Ancient Egyptian Antiquities", nameAr: "الآثار المصرية القديمة", icon: "ankh", count: 60 },
-  { id: 39, nameEn: "Greco-Roman Antiquities", nameAr: "الآثار اليونانية والرومانية", icon: "column", count: 20 },
-  { id: 40, nameEn: "Islamic Antiquities", nameAr: "الآثار الإسلامية", icon: "crescent", count: 10 },
-  { id: 41, nameEn: "Coins Collection", nameAr: "مجموعة العملات", icon: "coin", count: 7 },
-];
+interface SectionData {
+  id: number | string;
+  nameEn: string;
+  nameAr: string;
+  icon: string;
+  count: number;
+}
 
 export default function SectionsPage({ params }: { params: Promise<{ locale: string }> }) {
   const p = use(params);
@@ -19,6 +21,49 @@ export default function SectionsPage({ params }: { params: Promise<{ locale: str
   const dict = getDictionary(locale);
   const otherLocale = locale === 'en' ? 'ar' : 'en';
   const otherLocaleLabel = locale === 'en' ? 'عربي' : 'English';
+
+  const [sections, setSections] = useState<SectionData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function fetchSections() {
+      const { data } = await supabase
+        .from('museum_artifacts')
+        .select('metadata');
+      
+      if (data) {
+        const sectionsMap = new Map<string, SectionData>();
+        
+        data.forEach(item => {
+           const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+           
+           // Ensure we have a valid section
+           const sectionNum = meta?.section_number?.toString()?.trim();
+           if (sectionNum && sectionNum !== "nan" && sectionNum !== "") {
+             if (sectionsMap.has(sectionNum)) {
+               const existing = sectionsMap.get(sectionNum)!;
+               existing.count += 1;
+             } else {
+               sectionsMap.set(sectionNum, {
+                 id: sectionNum,
+                 nameEn: meta.section_name_en || `Section ${sectionNum}`,
+                 nameAr: meta.section_name_ar || `قسم ${sectionNum}`,
+                 icon: "column", // Default icon
+                 count: 1
+               });
+             }
+           }
+        });
+        
+        const sortedSections = Array.from(sectionsMap.values()).sort((a, b) => b.count - a.count);
+        setSections(sortedSections);
+      }
+      setLoading(false);
+    }
+    
+    fetchSections();
+  }, []);
 
   return (
     <PageTransition>
@@ -46,11 +91,15 @@ export default function SectionsPage({ params }: { params: Promise<{ locale: str
             <div className="h-px w-24 bg-[var(--color-gold)] mx-auto"></div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {sections.map((section) => (
-              <SectionCard key={section.id} section={section} locale={locale} />
-            ))}
-          </div>
+          {loading ? (
+             <div className="w-full text-center py-20 text-[var(--color-text-secondary)]">Loading sections...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {sections.map((section) => (
+                <SectionCard key={section.id} section={section} locale={locale} />
+              ))}
+            </div>
+          )}
         </main>
         
         <FloatingAIButton locale={locale} />

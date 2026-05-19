@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Coins, Book, Building, Landmark } from "lucide-react";
 
 interface Section {
-  id: number;
+  id: number | string;
   nameEn: string;
   nameAr: string;
   icon: string;
