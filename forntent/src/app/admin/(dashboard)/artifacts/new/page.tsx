@@ -1,7 +1,10 @@
 "use client";
-import { Info, PenTool, Camera } from "lucide-react";
+import { Info, PenTool, Camera, Loader2 } from "lucide-react";
 import { getDictionary } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function AdminNewArtifact() {
   const { locale } = useAdminLocale();
@@ -12,12 +15,52 @@ export default function AdminNewArtifact() {
     ? "font-[family-name:var(--font-arabic)]"
     : "font-[family-name:var(--font-headline-md)]";
 
+  const supabase = createClient();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
   // Today's date for registry
   const today = new Date().toLocaleDateString((locale as string) === "ar" ? "ar-EG" : "en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get("artifact_name") as string;
+    const category = formData.get("category") as string;
+    const hall = formData.get("hall") as string;
+    const desc = formData.get("description") as string;
+    
+    // Fallback image url
+    const DEFAULT_IMAGE = "https://lh3.googleusercontent.com/aida-public/AB6AXuBA6FlkSGl2M4zEEA3OinZ07qJmwBvRI3Hn1vCCQkuHrizJB7RXQSHITEhDZtz-cJYxOTFB2JLhP_LrTleyttObKZ6KrRxTraIylhVPE2Ck8npsNHYsErkYKZcNOTIioWhZdMH8oQ6n0MSUI3jYYOuaZPdhM_3fk-TpP-nVpaO3-RBlJkM7oq_36irpT5Ni1XBWhukCz4gqoCaYrwKHh2GeDktpARciMtqUeeuvozJUshuODSg2nvY0DC7m0tYG9pJIR_C2EMjpxlU";
+
+    const metadata = {
+      artifact_name_en: name,
+      artifact_name_ar: name, 
+      section_name_en: category || "Unknown",
+      section_name_ar: category || "Unknown",
+      hall,
+      image_url: DEFAULT_IMAGE
+    };
+
+    const { error } = await supabase.from('museum_artifacts').insert([
+      {
+        content: desc || "No description provided.",
+        metadata: metadata
+      }
+    ]);
+
+    setLoading(false);
+    if (!error) {
+      router.push("/admin/artifacts");
+    } else {
+      alert("Error saving artifact: " + error.message);
+    }
+  }
 
   return (
     <div
@@ -43,7 +86,7 @@ export default function AdminNewArtifact() {
       </div>
 
       {/* Form Grid */}
-      <form className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left / Main column */}
         <div className="lg:col-span-8 flex flex-col gap-8">
 
@@ -69,6 +112,7 @@ export default function AdminNewArtifact() {
                   type="text"
                   id="artifact_name"
                   name="artifact_name"
+                  required
                   placeholder={t.namePlaceholder}
                   dir={isRTL ? "rtl" : "ltr"}
                   className={`w-full bg-transparent border-0 border-b border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-[var(--color-on-surface)] text-xl placeholder:text-[var(--color-outline-variant)] focus:outline-none ${isRTL ? "font-[family-name:var(--font-arabic)] text-right" : "font-[family-name:var(--font-body-lg)]"}`}
@@ -86,6 +130,7 @@ export default function AdminNewArtifact() {
                 <select
                   id="category"
                   name="category"
+                  required
                   className={`w-full bg-transparent border-0 border-b border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-[var(--color-on-surface)] text-lg focus:outline-none ${isRTL ? "font-[family-name:var(--font-arabic)]" : "font-[family-name:var(--font-body-lg)]"}`}
                 >
                   <option value="" className="bg-[#1a1825]">{t.categoryDefault}</option>
@@ -137,6 +182,7 @@ export default function AdminNewArtifact() {
               <textarea
                 id="description"
                 name="description"
+                required
                 rows={5}
                 placeholder={t.descPlaceholder}
                 dir={isRTL ? "rtl" : "ltr"}
@@ -184,6 +230,7 @@ export default function AdminNewArtifact() {
               <label className={`flex items-start gap-3 cursor-pointer ${isRTL ? "flex-row-reverse" : ""}`}>
                 <input
                   type="checkbox"
+                  required
                   className="mt-1 w-4 h-4 text-[var(--color-primary)] bg-transparent border-[var(--color-primary)]/50 rounded-none shrink-0"
                 />
                 <span className={`${isRTL ? "font-[family-name:var(--font-arabic)] text-sm leading-loose" : "font-[family-name:var(--font-body-md)] text-sm"} text-[var(--color-on-surface-variant)]`}>
@@ -193,9 +240,13 @@ export default function AdminNewArtifact() {
             </div>
             <button
               type="submit"
-              className={`w-full relative group overflow-hidden border-2 border-[var(--color-primary)] text-[var(--color-primary)] px-8 py-4 uppercase tracking-[0.2em] transition-all duration-500 hover:text-[#0a0a0f] bg-[var(--color-primary)]/5 ${headingClass} text-xs font-bold`}
+              disabled={loading}
+              className={`w-full relative group overflow-hidden border-2 border-[var(--color-primary)] text-[var(--color-primary)] px-8 py-4 uppercase tracking-[0.2em] transition-all duration-500 hover:text-[#0a0a0f] disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--color-primary)]/5 ${headingClass} text-xs font-bold flex items-center justify-center`}
             >
-              <span className="relative z-10">{t.submit}</span>
+              <span className="relative z-10 flex items-center gap-2">
+                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {t.submit}
+              </span>
               <div className="absolute inset-0 bg-[var(--color-primary)] translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-in-out z-0"></div>
             </button>
           </section>
