@@ -4,6 +4,9 @@ import { Building2, Clock, MoreHorizontal } from "lucide-react";
 import { getDictionary, hFont, bodyFont, dir } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
 
+import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState } from "react";
+
 const L = {
   en: {
     pageTitle: "Curatorial Overview",
@@ -61,6 +64,51 @@ export default function AdminDashboard() {
   const isAr = locale === "ar";
   const t = L[isAr ? "ar" : "en"];
 
+  const [totalArtifacts, setTotalArtifacts] = useState<number>(0);
+  const [sectionsData, setSectionsData] = useState<{name: string, count: number, height: string}[]>([]);
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function fetchStats() {
+      const { count, data } = await supabase
+        .from('museum_artifacts')
+        .select('metadata', { count: 'exact' });
+      
+      if (count !== null) {
+        setTotalArtifacts(count);
+      }
+
+      if (data) {
+        // Compute sections distribution
+        const sectionCounts: Record<string, number> = {};
+        data.forEach(item => {
+           // Parse metadata if it's a string
+           const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+           const secName = isAr ? meta?.section_name_ar : meta?.section_name_en;
+           if (secName) {
+              sectionCounts[secName] = (sectionCounts[secName] || 0) + 1;
+           }
+        });
+        
+        // Sort and get top 5 sections
+        const sorted = Object.entries(sectionCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+          
+        const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
+        
+        const chartData = sorted.map(([name, count]) => ({
+           name,
+           count,
+           height: `${Math.max(15, (count / maxCount) * 80)}%` // Max height 80%
+        }));
+        
+        setSectionsData(chartData);
+      }
+    }
+    fetchStats();
+  }, [isAr]); // Re-run if language changes
+
   return (
     <div dir={dir(locale)} className="flex-1 px-6 md:px-12 pt-10 pb-24 max-w-[1600px] w-full mx-auto relative">
       {/* Noise texture */}
@@ -82,20 +130,20 @@ export default function AdminDashboard() {
               <Building2 className="w-16 h-16 text-[var(--color-primary-container)]" />
             </div>
             <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] mb-4`}>{t.totalArtifacts}</h3>
-            <p className="font-[family-name:var(--font-display-lg)] text-6xl font-bold text-[var(--color-primary-container)]">1,240</p>
+            <p className="font-[family-name:var(--font-display-lg)] text-6xl font-bold text-[var(--color-primary-container)]">{totalArtifacts}</p>
             <div className="w-12 h-[1px] bg-[var(--color-primary-container)] mt-6" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-[var(--color-gold)]/20 p-6 flex flex-col justify-between shadow-inner">
               <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] mb-2`}>{t.recentAcq}</h3>
-              <p className="font-[family-name:var(--font-headline-md)] text-3xl text-[var(--color-surface-tint)]">12</p>
-              <p className={`text-xs text-[var(--color-on-surface-variant)] ${bodyFont(locale)} mt-2`}>{t.recentAcqSub}</p>
+              <p className="font-[family-name:var(--font-headline-md)] text-3xl text-[var(--color-surface-tint)]">0</p>
+              <p className={`text-xs text-[var(--color-on-surface-variant)] ${bodyFont(locale)} mt-2`}>No recent items</p>
             </div>
             <div className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-[var(--color-gold)]/20 border-t-[var(--color-error-container)]/50 p-6 flex flex-col justify-between shadow-inner">
               <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] mb-2`}>{t.pending}</h3>
-              <p className="font-[family-name:var(--font-headline-md)] text-3xl text-[var(--color-error-container)]">5</p>
-              <p className={`text-xs text-[var(--color-on-surface-variant)] ${bodyFont(locale)} mt-2`}>{t.pendingSub}</p>
+              <p className="font-[family-name:var(--font-headline-md)] text-3xl text-[var(--color-error-container)]">0</p>
+              <p className={`text-xs text-[var(--color-on-surface-variant)] ${bodyFont(locale)} mt-2`}>All caught up!</p>
             </div>
           </div>
         </div>
@@ -109,23 +157,25 @@ export default function AdminDashboard() {
             </button>
           </div>
           <div className="flex items-end gap-4 h-56 border-l border-b border-[var(--color-outline-variant)]/30 pb-4 px-4">
-            {[
-              { height: "80%" }, { height: "60%" }, { height: "40%" }, { height: "25%" }, { height: "15%" },
-            ].map((bar, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 group w-full px-1">
-                <div
-                  className="w-full bg-[var(--color-primary-container)]/20 border border-[var(--color-primary-container)]/50 group-hover:bg-[var(--color-primary-container)]/40 transition-colors relative cursor-pointer"
-                  style={{ height: bar.height }}
-                >
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 font-[family-name:var(--font-label-sm)] text-[var(--color-primary-container)] transition-opacity text-xs">
-                    {[450, 320, 210, 150, 110][i]}
+            {sectionsData.length > 0 ? (
+              sectionsData.map((bar, i) => (
+                <div key={i} className="flex flex-col items-center gap-2 group w-full px-1">
+                  <div
+                    className="w-full bg-[var(--color-primary-container)]/20 border border-[var(--color-primary-container)]/50 group-hover:bg-[var(--color-primary-container)]/40 transition-colors relative cursor-pointer"
+                    style={{ height: bar.height }}
+                  >
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 font-[family-name:var(--font-label-sm)] text-[var(--color-primary-container)] transition-opacity text-xs">
+                      {bar.count}
+                    </div>
                   </div>
+                  <span className={`text-[10px] uppercase text-[var(--color-on-surface-variant)] hidden sm:block ${hFont(locale)} truncate max-w-full text-center`} title={bar.name}>
+                    {bar.name.substring(0, 15)}{bar.name.length > 15 ? '...' : ''}
+                  </span>
                 </div>
-                <span className={`text-[10px] uppercase text-[var(--color-on-surface-variant)] hidden sm:block ${hFont(locale)}`}>
-                  {t.bars[i]}
-                </span>
-              </div>
-            ))}
+              ))
+            ) : (
+               <div className="w-full text-center text-sm text-[var(--color-on-surface-variant)] self-center">Loading...</div>
+            )}
           </div>
         </div>
       </div>
