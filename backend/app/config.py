@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Embedding model
     embedding_model: str = Field(
-        default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        default="intfloat/multilingual-e5-base",
         env="EMBEDDING_MODEL",
     )
 
