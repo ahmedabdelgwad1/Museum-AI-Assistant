@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChatMessage, AIResponse } from '@/types';
 import { getDictionary } from '@/lib/dictionaries';
 
@@ -27,6 +27,13 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
       currentAudioRef.current = null;
     }
   };
+
+  // Stop audio if the user leaves the page
+  useEffect(() => {
+    return () => {
+      stopCurrentAudio();
+    };
+  }, []);
 
   const startRecording = async () => {
     stopCurrentAudio();
@@ -96,10 +103,13 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
 
       const data = await response.json();
       
-      const audioUrl = `data:audio/mp3;base64,${data.audio_base64}`;
-      const audio = new Audio(audioUrl);
-      currentAudioRef.current = audio;
-      audio.play();
+      if (data.audio_base64) {
+        stopCurrentAudio();
+        const audioUrl = `data:audio/mp3;base64,${data.audio_base64}`;
+        const audio = new Audio(audioUrl);
+        currentAudioRef.current = audio;
+        audio.play();
+      }
 
       setMessages(prev => {
         const newMsgs = [...prev];
@@ -173,6 +183,7 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
 
       // If the backend returns audio_base64, play it
       if (data.audio_base64) {
+        stopCurrentAudio(); // Strictly stop any audio that might have started during the loading time
         const audioUrl = `data:audio/mp3;base64,${data.audio_base64}`;
         const audio = new Audio(audioUrl);
         currentAudioRef.current = audio;
