@@ -1,4 +1,4 @@
-"""Semantic search and retrieval over the ChromaDB artifact collection."""
+"""Semantic search and retrieval over the Supabase pgvector artifact collection."""
 
 import logging
 from typing import List, Dict, Any, Optional

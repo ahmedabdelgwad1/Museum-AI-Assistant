@@ -16,8 +16,11 @@ class Settings(BaseSettings):
         """Return a list of all configured Groq API keys."""
         return [k.strip() for k in self.groq_api_key.split(",") if k.strip()]
 
-    # ChromaDB
-    chroma_persist_dir: str = Field(default="./data/chroma_db", env="CHROMA_PERSIST_DIR")
+    # Supabase
+    supabase_url: str = Field(default="https://fyeoccqyylbomsmwjwxh.supabase.co", env="SUPABASE_URL")
+    supabase_key: str = Field(..., env="SUPABASE_KEY")
+    supabase_table: str = Field(default="museum_artifacts", env="SUPABASE_TABLE")
+    supabase_function: str = Field(default="match_artifacts", env="SUPABASE_FUNCTION")
 
     # Data paths
     csv_data_path: str = Field(default="./data/bibalex_full_museum_data.csv", env="CSV_DATA_PATH")
@@ -45,9 +48,6 @@ class Settings(BaseSettings):
 
     # CORS origins
     cors_origins: list[str] = Field(default=["*"], env="CORS_ORIGINS")
-
-    # ChromaDB collection name
-    chroma_collection_name: str = Field(default="bibalex_artifacts", env="CHROMA_COLLECTION_NAME")
 
     class Config:
         env_file = ".env"
