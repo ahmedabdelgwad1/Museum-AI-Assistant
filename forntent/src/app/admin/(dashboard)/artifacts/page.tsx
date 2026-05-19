@@ -107,7 +107,7 @@ export default function AdminArtifacts() {
           <h1 className={`${hFont(locale)} text-[var(--color-on-surface)] text-4xl`}>{t.title}</h1>
         </div>
         <Link
-          href="new"
+          href="/admin/artifacts/new"
           className={`border-2 border-[var(--color-primary)] text-[var(--color-primary)] px-8 py-3 uppercase ${hFont(locale)} tracking-widest text-xs hover:bg-[var(--color-primary)] hover:text-[#171308] transition-all duration-500 hover:shadow-[inset_0_0_20px_0_rgba(230,195,100,0.5)] whitespace-nowrap`}
         >
           {t.addBtn}
