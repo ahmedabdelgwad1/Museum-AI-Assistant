@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getDictionary, hFont, dir } from "@/lib/dictionaries";
 
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+
 const L = {
   en: {
     title: "Bibliotheca\nAlexandrina",
@@ -12,7 +15,9 @@ const L = {
     emailPlaceholder: "scholar@alexandrina.gov.eg",
     passLabel: "Security Key",
     submit: "Enter Sanctuary",
+    loading: "Authenticating...",
     requestAccess: "Request Archival Access",
+    errorLogin: "Invalid credentials. Please try again.",
   },
   ar: {
     title: "مكتبة\nالإسكندرية",
@@ -21,7 +26,9 @@ const L = {
     emailPlaceholder: "scholar@alexandrina.gov.eg",
     passLabel: "مفتاح الأمان",
     submit: "الدخول إلى الملاذ",
+    loading: "جاري التحقق...",
     requestAccess: "طلب صلاحية الوصول",
+    errorLogin: "بيانات الدخول غير صحيحة. حاول مرة أخرى.",
   },
 };
 
@@ -30,10 +37,31 @@ export default function AdminLogin() {
   const isAr = (locale as string) === "ar";
   const t = L[isAr ? "ar" : "en"];
   const router = useRouter();
+  
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const supabase = createClient();
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push(`/admin`);
+    setLoading(true);
+    setError(null);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(t.errorLogin);
+      setLoading(false);
+    } else {
+      router.push(`/admin`);
+      router.refresh(); // Refresh to update middleware state
+    }
   };
 
   return (
@@ -57,6 +85,12 @@ export default function AdminLogin() {
 
         {/* Form */}
         <form onSubmit={handleLogin} className="flex flex-col gap-8">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 text-sm text-center">
+              {error}
+            </div>
+          )}
+          
           <div className="relative group">
             <label
               htmlFor="email"
@@ -68,6 +102,8 @@ export default function AdminLogin() {
               type="email"
               id="email"
               name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder={t.emailPlaceholder}
               required
               dir="ltr"
@@ -86,6 +122,8 @@ export default function AdminLogin() {
               type="password"
               id="password"
               name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
               required
               dir="ltr"
@@ -95,9 +133,10 @@ export default function AdminLogin() {
 
           <button
             type="submit"
-            className={`w-full py-5 border-2 border-[var(--color-primary)] bg-transparent text-[var(--color-primary)] ${hFont(locale)} text-xs uppercase tracking-[0.2em] hover:bg-[var(--color-primary)] hover:text-[#3d2e00] transition-all duration-300 mt-2`}
+            disabled={loading}
+            className={`w-full py-5 border-2 border-[var(--color-primary)] bg-transparent text-[var(--color-primary)] ${hFont(locale)} text-xs uppercase tracking-[0.2em] hover:bg-[var(--color-primary)] hover:text-[#3d2e00] disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[var(--color-primary)] transition-all duration-300 mt-2`}
           >
-            {t.submit}
+            {loading ? t.loading : t.submit}
           </button>
         </form>
 
