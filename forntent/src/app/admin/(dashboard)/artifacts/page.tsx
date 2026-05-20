@@ -1,11 +1,11 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Edit, Trash2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Edit, Trash2, ChevronLeft, ChevronRight, X, Upload, Loader2 } from "lucide-react";
 import { hFont, bodyFont, dir } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
-import { useEffect, useState } from "react";
-import { deleteArtifact, getAdminArtifacts, updateArtifact } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { deleteArtifact, getAdminArtifacts, updateArtifact, uploadImage } from "@/lib/api";
 
 const L = {
   en: {
@@ -116,6 +116,8 @@ export default function AdminArtifacts() {
   const [editForm, setEditForm] = useState({ nameEn: "", nameAr: "", sectionEn: "", sectionAr: "", image: "" });
   const [editSaving, setEditSaving] = useState(false);
   const [editMsg, setEditMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [imgUploading, setImgUploading] = useState(false);
+  const editFileRef = useRef<HTMLInputElement>(null);
 
   // Pagination — 5 items per page, max 30 items shown (6 pages)
   const [page, setPage] = useState(1);
@@ -216,6 +218,19 @@ export default function AdminArtifacts() {
       setEditMsg({ type: "err", text: t.editError });
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handleImgUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setImgUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setEditForm(f => ({ ...f, image: url }));
+    } catch (err) {
+      alert("Image upload failed: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setImgUploading(false);
     }
   };
 
@@ -394,12 +409,12 @@ export default function AdminArtifacts() {
 
             {/* Form fields */}
             <div className="flex flex-col gap-5">
+              {/* Text fields */}
               {([
                 { label: t.editNameEn, key: "nameEn", dir: "ltr" },
                 { label: t.editNameAr, key: "nameAr", dir: "rtl" },
                 { label: t.editSecEn,  key: "sectionEn", dir: "ltr" },
                 { label: t.editSecAr,  key: "sectionAr", dir: "rtl" },
-                { label: t.editImg,    key: "image", dir: "ltr" },
               ] as { label: string; key: keyof typeof editForm; dir: string }[]).map(({ label, key, dir: d }) => (
                 <div key={key}>
                   <label className={`block ${hFont(locale)} text-[10px] uppercase tracking-widest text-[var(--color-on-surface-variant)] mb-2`}>{label}</label>
@@ -411,7 +426,53 @@ export default function AdminArtifacts() {
                   />
                 </div>
               ))}
+
+              {/* Image field with upload button */}
+              <div>
+                <label className={`block ${hFont(locale)} text-[10px] uppercase tracking-widest text-[var(--color-on-surface-variant)] mb-2`}>{t.editImg}</label>
+                <div className="flex gap-2 items-stretch">
+                  {/* URL input */}
+                  <input
+                    dir="ltr"
+                    value={editForm.image}
+                    onChange={e => setEditForm(f => ({ ...f, image: e.target.value }))}
+                    placeholder="https://..."
+                    className={`flex-1 bg-[var(--color-surface-container-high)]/50 border border-[var(--color-primary)]/30 focus:border-[var(--color-primary)] outline-none px-4 py-3 text-sm text-[var(--color-on-surface)] ${bodyFont(locale)} transition-colors min-w-0`}
+                  />
+                  {/* Upload button */}
+                  <button
+                    type="button"
+                    title={isAr ? "رفع صورة" : "Upload image"}
+                    onClick={() => editFileRef.current?.click()}
+                    disabled={imgUploading}
+                    className="shrink-0 px-4 border border-[var(--color-primary)]/40 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors disabled:opacity-40 flex items-center gap-2"
+                  >
+                    {imgUploading
+                      ? <Loader2 size={16} className="animate-spin" />
+                      : <Upload size={16} />}
+                    <span className={`${hFont(locale)} text-[10px] uppercase tracking-wider hidden sm:block`}>
+                      {imgUploading ? (isAr ? "جاري..." : "...") : (isAr ? "رفع" : "Upload")}
+                    </span>
+                  </button>
+                  {/* Hidden file input */}
+                  <input
+                    ref={editFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleImgUpload(f); }}
+                  />
+                </div>
+                {/* Thumbnail preview */}
+                {editForm.image && (
+                  <div className="mt-3 w-16 h-16 border border-[var(--color-primary)]/30 relative overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={editForm.image} alt="preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = "none")} />
+                  </div>
+                )}
+              </div>
             </div>
+
 
             {/* Feedback */}
             {editMsg && (

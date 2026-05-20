@@ -1,10 +1,10 @@
 "use client";
-import { Info, PenTool, Camera, Loader2 } from "lucide-react";
+import { Info, PenTool, Camera, Loader2, Upload, CheckCircle2 } from "lucide-react";
 import { getDictionary } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createArtifact, getAdminArtifacts } from "@/lib/api";
+import { createArtifact, getAdminArtifacts, uploadImage } from "@/lib/api";
 
 type ArtifactMetadata = {
   section_number?: string | number;
@@ -42,6 +42,11 @@ export default function AdminNewArtifact() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [sections, setSections] = useState<SectionOption[]>([]);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageUrlInputRef = useRef<HTMLInputElement>(null);
 
   // Today's date for registry
   const today = new Date().toLocaleDateString((locale as string) === "ar" ? "ar-EG" : "en-GB", {
@@ -88,6 +93,24 @@ export default function AdminNewArtifact() {
     });
   }, []);
 
+  const handleFileSelect = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    // Show local preview immediately
+    setImagePreview(URL.createObjectURL(file));
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setUploadedUrl(url);
+      // Auto-fill the image_url input
+      if (imageUrlInputRef.current) imageUrlInputRef.current.value = url;
+    } catch (err) {
+      alert("Image upload failed: " + (err instanceof Error ? err.message : String(err)));
+      setImagePreview(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -96,7 +119,7 @@ export default function AdminNewArtifact() {
     const category = formData.get("category") as string;
     const hall = formData.get("hall") as string;
     const desc = formData.get("description") as string;
-    const imageUrl = formData.get("image_url") as string;
+    const imageUrl = (formData.get("image_url") as string) || uploadedUrl;
     const selectedSection = sections.find((section) => section.id === category);
     
     // Fallback image url
@@ -286,6 +309,7 @@ export default function AdminNewArtifact() {
                 {isRTL ? "رابط الصورة" : "Image URL"}
               </label>
               <input
+                ref={imageUrlInputRef}
                 type="url"
                 id="image_url"
                 name="image_url"
@@ -295,20 +319,56 @@ export default function AdminNewArtifact() {
               />
             </div>
 
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
+            />
+
             {/* Dropzone */}
-            <div className="flex-1 min-h-[220px] border-2 border-dashed border-[var(--color-primary)]/40 hover:border-[var(--color-primary)] transition-colors bg-[var(--color-surface-container-lowest)]/30 flex flex-col items-center justify-center p-6 text-center cursor-pointer group">
-              <div className="w-12 h-12 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mb-3 group-hover:bg-[var(--color-primary)]/20 transition-colors">
-                <Camera className="text-[var(--color-primary)] w-6 h-6" />
-              </div>
-              <span className={`${headingClass} text-[var(--color-primary)] text-xs uppercase tracking-widest mb-1 block`}>
-                {t.uploadLabel}
-              </span>
-              <span className={`${isRTL ? "font-[family-name:var(--font-arabic)] text-xs" : "font-[family-name:var(--font-body-md)] text-sm"} text-[var(--color-outline-variant)] block`}>
-                {t.uploadHint}
-              </span>
-              <span className="text-[var(--color-outline-variant)] text-[10px] mt-3 block uppercase tracking-wider">
-                {t.uploadTypes}
-              </span>
+            <div
+              className="flex-1 min-h-[220px] border-2 border-dashed border-[var(--color-primary)]/40 hover:border-[var(--color-primary)] transition-colors bg-[var(--color-surface-container-lowest)]/30 flex flex-col items-center justify-center p-6 text-center cursor-pointer group relative overflow-hidden"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f); }}
+            >
+              {/* Image preview */}
+              {imagePreview ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="preview" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                  <div className="relative z-10 flex flex-col items-center gap-2">
+                    {uploading ? (
+                      <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-8 h-8 text-green-400" />
+                    )}
+                    <span className={`${headingClass} text-xs uppercase tracking-widest text-[var(--color-primary)]`}>
+                      {uploading
+                        ? (isRTL ? "جاري الرفع..." : "Uploading...")
+                        : (isRTL ? "تم الرفع — اضغط لتغيير" : "Uploaded — click to change")}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mb-3 group-hover:bg-[var(--color-primary)]/20 transition-colors">
+                    <Upload className="text-[var(--color-primary)] w-6 h-6" />
+                  </div>
+                  <span className={`${headingClass} text-[var(--color-primary)] text-xs uppercase tracking-widest mb-1 block`}>
+                    {isRTL ? "اسحب الصورة هنا أو اضغط للاختيار" : "Drop image or click to browse"}
+                  </span>
+                  <span className={`${isRTL ? "font-[family-name:var(--font-arabic)] text-xs" : "font-[family-name:var(--font-body-md)] text-sm"} text-[var(--color-outline-variant)] block`}>
+                    {t.uploadHint}
+                  </span>
+                  <span className="text-[var(--color-outline-variant)] text-[10px] mt-3 block uppercase tracking-wider">
+                    {t.uploadTypes}
+                  </span>
+                </>
+              )}
             </div>
           </section>
 
