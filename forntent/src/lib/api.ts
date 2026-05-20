@@ -98,6 +98,28 @@ export async function deleteArtifact(id: string | number) {
   }
 }
 
+export type UpdateArtifactInput = {
+  artifact_name_en?: string
+  artifact_name_ar?: string
+  section_name_en?: string
+  section_name_ar?: string
+  image_url?: string
+}
+
+export async function updateArtifact(id: string | number, input: UpdateArtifactInput) {
+  const res = await fetch(`${API_BASE}/artifacts/${encodeURIComponent(String(id))}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+  const payload = await res.json().catch(() => null)
+  if (!res.ok) {
+    const detail = payload?.detail || "Failed to update artifact."
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail))
+  }
+  return payload
+}
+
 export type CreateArtifactInput = {
   artifact_name_en: string
   artifact_name_ar?: string

@@ -1,11 +1,11 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit, Trash2, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { hFont, bodyFont, dir } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
 import { useEffect, useState } from "react";
-import { deleteArtifact, getAdminArtifacts } from "@/lib/api";
+import { deleteArtifact, getAdminArtifacts, updateArtifact } from "@/lib/api";
 
 const L = {
   en: {
@@ -23,7 +23,17 @@ const L = {
     noData: "No artifacts found.",
     deleteConfirm: "Delete this artifact from Supabase?",
     deleteError: "Could not delete artifact. Please check permissions.",
-    editSoon: "Editing will be connected next."
+    editTitle: "Edit Artifact",
+    editNameEn: "Name (English)",
+    editNameAr: "Name (Arabic)",
+    editSecEn: "Section (English)",
+    editSecAr: "Section (Arabic)",
+    editImg: "Image URL",
+    editSave: "Save Changes",
+    editCancel: "Cancel",
+    editSaving: "Saving...",
+    editSuccess: "Saved successfully.",
+    editError: "Could not save. Please try again.",
   },
   ar: {
     label: "نظام السجل",
@@ -40,7 +50,17 @@ const L = {
     noData: "لا توجد قطع أثرية.",
     deleteConfirm: "هل تريد حذف هذه القطعة من Supabase؟",
     deleteError: "تعذر حذف القطعة. راجع صلاحيات قاعدة البيانات.",
-    editSoon: "سيتم ربط التعديل لاحقاً."
+    editTitle: "تعديل القطعة",
+    editNameEn: "الاسم (إنجليزي)",
+    editNameAr: "الاسم (عربي)",
+    editSecEn: "القسم (إنجليزي)",
+    editSecAr: "القسم (عربي)",
+    editImg: "رابط الصورة",
+    editSave: "حفظ التعديلات",
+    editCancel: "إلغاء",
+    editSaving: "جاري الحفظ...",
+    editSuccess: "تم الحفظ بنجاح.",
+    editError: "تعذر الحفظ. حاول مرة أخرى.",
   },
 };
 
@@ -90,6 +110,12 @@ export default function AdminArtifacts() {
   const [allArtifacts, setAllArtifacts] = useState<ArtifactTableItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
+
+  // Edit modal state
+  const [editingItem, setEditingItem] = useState<ArtifactTableItem | null>(null);
+  const [editForm, setEditForm] = useState({ nameEn: "", nameAr: "", sectionEn: "", sectionAr: "", image: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editMsg, setEditMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Pagination — 5 items per page, max 30 items shown (6 pages)
   const [page, setPage] = useState(1);
@@ -157,7 +183,44 @@ export default function AdminArtifacts() {
     }
   };
 
+  const openEdit = (item: ArtifactTableItem) => {
+    setEditingItem(item);
+    setEditForm({ nameEn: item.nameEn, nameAr: item.nameAr, sectionEn: item.sectionEn, sectionAr: item.sectionAr, image: item.image });
+    setEditMsg(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    setEditSaving(true);
+    setEditMsg(null);
+    try {
+      await updateArtifact(editingItem.id, {
+        artifact_name_en: editForm.nameEn,
+        artifact_name_ar: editForm.nameAr,
+        section_name_en: editForm.sectionEn,
+        section_name_ar: editForm.sectionAr,
+        image_url: editForm.image,
+      });
+      // Update local state immediately — no reload needed
+      setAllArtifacts(prev =>
+        prev.map(a =>
+          a.id === editingItem.id
+            ? { ...a, nameEn: editForm.nameEn, nameAr: editForm.nameAr, sectionEn: editForm.sectionEn, sectionAr: editForm.sectionAr, image: editForm.image }
+            : a
+        )
+      );
+      setEditMsg({ type: "ok", text: t.editSuccess });
+      setTimeout(() => setEditingItem(null), 900);
+    } catch (err) {
+      console.error(err);
+      setEditMsg({ type: "err", text: t.editError });
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   return (
+    <>
     <div dir={dir(locale)} className="pt-10 px-6 md:px-12 pb-24 max-w-[1280px] mx-auto w-full relative">
       {/* Canvas Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-4">
@@ -228,7 +291,7 @@ export default function AdminArtifacts() {
                       <div className="flex justify-end gap-3 opacity-60 group-hover:opacity-100 transition-opacity">
                         <button
                           aria-label="Edit"
-                          onClick={() => alert(t.editSoon)}
+                          onClick={() => openEdit(item)}
                           className="p-2 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors"
                         >
                           <Edit size={18} />
@@ -308,5 +371,74 @@ export default function AdminArtifacts() {
         </div>
       </div>
     </div>
+
+      {/* ─── Edit Modal ─── */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setEditingItem(null)}>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+          {/* Panel */}
+          <div
+            dir={dir(locale)}
+            className="relative z-10 w-full max-w-lg bg-[#1a1825] border border-[var(--color-primary)]/40 border-t-[var(--color-primary-container)]/60 shadow-2xl p-8"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex justify-between items-start mb-8">
+              <h2 className={`${hFont(locale)} text-xl text-[var(--color-primary-container)]`}>{t.editTitle}</h2>
+              <button onClick={() => setEditingItem(null)} className="text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Form fields */}
+            <div className="flex flex-col gap-5">
+              {([
+                { label: t.editNameEn, key: "nameEn", dir: "ltr" },
+                { label: t.editNameAr, key: "nameAr", dir: "rtl" },
+                { label: t.editSecEn,  key: "sectionEn", dir: "ltr" },
+                { label: t.editSecAr,  key: "sectionAr", dir: "rtl" },
+                { label: t.editImg,    key: "image", dir: "ltr" },
+              ] as { label: string; key: keyof typeof editForm; dir: string }[]).map(({ label, key, dir: d }) => (
+                <div key={key}>
+                  <label className={`block ${hFont(locale)} text-[10px] uppercase tracking-widest text-[var(--color-on-surface-variant)] mb-2`}>{label}</label>
+                  <input
+                    dir={d}
+                    value={editForm[key]}
+                    onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                    className={`w-full bg-[var(--color-surface-container-high)]/50 border border-[var(--color-primary)]/30 focus:border-[var(--color-primary)] outline-none px-4 py-3 text-sm text-[var(--color-on-surface)] ${bodyFont(locale)} transition-colors`}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Feedback */}
+            {editMsg && (
+              <p className={`mt-5 text-sm ${bodyFont(locale)} ${
+                editMsg.type === "ok" ? "text-green-400" : "text-[var(--color-error)]"
+              }`}>{editMsg.text}</p>
+            )}
+
+            {/* Actions */}
+            <div className={`flex gap-3 mt-8 ${isAr ? "flex-row-reverse" : ""}`}>
+              <button
+                onClick={handleSaveEdit}
+                disabled={editSaving}
+                className={`flex-1 py-3 uppercase ${hFont(locale)} tracking-widest text-xs bg-[var(--color-primary)] text-[#171308] hover:opacity-90 disabled:opacity-50 transition-opacity`}
+              >
+                {editSaving ? t.editSaving : t.editSave}
+              </button>
+              <button
+                onClick={() => setEditingItem(null)}
+                className={`px-6 py-3 uppercase ${hFont(locale)} tracking-widest text-xs border border-[var(--color-primary)]/40 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors`}
+              >
+                {t.editCancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
