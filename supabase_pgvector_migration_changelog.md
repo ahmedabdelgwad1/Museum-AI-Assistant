@@ -462,3 +462,108 @@ npm run build
 ```
 
 - Result: passed with zero warnings. Console output shows `✓ Compiled successfully` and `ƒ Proxy (Middleware)` route confirmed active.
+
+---
+
+## 2026-05-21 — Admin Collection Page: Pagination Overhaul
+
+### Summary
+
+تم إعادة تصميم نظام الـ Pagination في صفحة المجموعة المقتناة ليكون أكثر احترافية وأخف في الأداء.
+
+### Changes
+
+- Updated `forntent/src/app/admin/(dashboard)/artifacts/page.tsx`
+  - Changed from server-side pagination (request per page) to **client-side pagination**.
+  - Fetches only the first **30 artifacts** in a single request on page load (`getAdminArtifacts(1, 30)`).
+  - Stores all 30 in `allArtifacts` state and slices locally per page.
+  - **5 items per page** → max **6 pages** displayed.
+  - Replaced the old single-page-number indicator with a **full numbered pagination bar**:
+    - Shows all page numbers when ≤ 7 pages.
+    - Shows ellipsis (`…`) for large page ranges (e.g. `1 … 4 5 6 … 10`).
+    - Active page highlighted with gold background.
+    - Previous / Next arrow buttons with disabled state.
+  - Delete handler updated to recalculate total pages from local state after deletion.
+
+### Verification
+
+- TypeScript: `npx tsc --noEmit` → passed with zero errors.
+
+---
+
+## 2026-05-21 — Admin Collection Page: Edit Artifact Modal
+
+### Summary
+
+تم إضافة مودال تعديل القطع الأثرية بدلاً من الـ `alert` المؤقت الذي كان يظهر عند الضغط على زرار التعديل.
+
+### API Changes
+
+- Updated `forntent/src/lib/api.ts`
+  - Added `UpdateArtifactInput` type.
+  - Added `updateArtifact(id, input)` function that sends `PATCH /artifacts/{id}` to the FastAPI backend.
+
+### Frontend Changes
+
+- Updated `forntent/src/app/admin/(dashboard)/artifacts/page.tsx`
+  - Added edit modal state: `editingItem`, `editForm`, `editSaving`, `editMsg`.
+  - Added `openEdit(item)` — opens modal pre-filled with artifact's current data.
+  - Added `handleSaveEdit()` — calls `updateArtifact`, then updates local state instantly (no reload).
+  - Edit button now calls `openEdit(item)` instead of `alert()`.
+  - Modal UI includes:
+    - 5 editable fields: Name (EN), Name (AR), Section (EN), Section (AR), Image URL.
+    - Save / Cancel buttons with loading state.
+    - Green success message on save, red error message on failure.
+    - Auto-closes after 900ms on success.
+    - Click outside backdrop to dismiss.
+  - Added localization strings for all modal text in both `en` and `ar`.
+
+### Verification
+
+- TypeScript: `npx tsc --noEmit` → passed with zero errors.
+
+---
+
+## 2026-05-21 — Image Upload to Supabase Storage
+
+### Summary
+
+تم إضافة وظيفة رفع الصور إلى Supabase Storage في كلٍّ من مودال التعديل وصفحة الإضافة الجديدة.
+
+### API Changes
+
+- Updated `forntent/src/lib/api.ts`
+  - Added `IMAGE_BUCKET = "artifact-images"` constant.
+  - Added `uploadImage(file: File): Promise<string>` function:
+    - Generates a unique filename using `Date.now()` + random suffix.
+    - Uploads to Supabase Storage bucket `artifact-images`.
+    - Returns the public URL of the uploaded image.
+
+### Frontend Changes
+
+- Updated `forntent/src/app/admin/(dashboard)/artifacts/page.tsx` (Edit Modal)
+  - Added `imgUploading` state and `editFileRef` ref.
+  - Added `handleImgUpload(file)` function.
+  - Image URL field now has a dedicated **Upload button** (🔼) beside it.
+  - Clicking Upload opens a hidden `<input type="file" accept="image/*">`.
+  - Shows spinner while uploading; auto-fills URL field on success.
+  - Shows a **16×16 thumbnail preview** below the image field.
+
+- Updated `forntent/src/app/admin/(dashboard)/artifacts/new/page.tsx` (Add Artifact)
+  - Added `imagePreview`, `uploading`, `uploadedUrl` states and `fileInputRef`, `imageUrlInputRef` refs.
+  - Added `handleFileSelect(file)` function.
+  - The decorative Dropzone is now **fully functional**:
+    - Click to browse, or **drag & drop** an image file.
+    - Shows an instant local **preview** (object URL) before upload completes.
+    - Spinner shown during upload; green ✓ shown on success.
+    - Auto-fills the Image URL input field after upload.
+  - Image URL input wired to `imageUrlInputRef` for programmatic filling.
+  - `handleSubmit` falls back to `uploadedUrl` if the URL text field is empty.
+
+### Infrastructure Requirement
+
+> ⚠️ A Supabase Storage bucket named **`artifact-images`** must exist and be set to **Public** for images to be accessible. Create it from: Supabase Dashboard → Storage → New Bucket → `artifact-images` → enable Public.
+
+### Verification
+
+- TypeScript: `npx tsc --noEmit` → passed with zero errors.
