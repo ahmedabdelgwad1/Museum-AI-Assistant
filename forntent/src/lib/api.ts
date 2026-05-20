@@ -14,7 +14,8 @@ export async function getArtifacts(sectionId?: number, search?: string) {
     // Supabase jsonb filtering requires specific syntax, but for simplicity
     // we'll fetch all and filter in JS if it's not a massive DB. 
     // Since we have 96 rows, this is extremely fast.
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) throw error;
     if (!data) return [];
     
     let results = data.map(row => {
@@ -46,7 +47,8 @@ export async function getArtifacts(sectionId?: number, search?: string) {
 
 export async function getArtifact(id: string) {
   try {
-    const { data } = await supabase.from('museum_artifacts').select('id, content, metadata').eq('id', id).single();
+    const { data, error } = await supabase.from('museum_artifacts').select('id, content, metadata').eq('id', id).single();
+    if (error) throw error;
     if (!data) return null;
     
     const meta = typeof data.metadata === 'string' ? JSON.parse(data.metadata) : data.metadata;
@@ -59,6 +61,36 @@ export async function getArtifact(id: string) {
     console.error("Error fetching artifact:", e);
     return null;
   }
+}
+
+export type CreateArtifactInput = {
+  artifact_name_en: string
+  artifact_name_ar?: string
+  description_en?: string
+  description_ar?: string
+  category_en?: string
+  category_ar?: string
+  hall_en?: string
+  hall_ar?: string
+  section_name_en?: string
+  section_name_ar?: string
+  section_number?: string
+  image_url?: string
+}
+
+export async function createArtifact(input: CreateArtifactInput) {
+  const res = await fetch(`${API_BASE}/artifacts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+
+  const payload = await res.json().catch(() => null)
+  if (!res.ok) {
+    const detail = payload?.detail || "Failed to save artifact."
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail))
+  }
+  return payload
 }
 
 export async function sendChatMessage(query: string, artifactContext?: object) {

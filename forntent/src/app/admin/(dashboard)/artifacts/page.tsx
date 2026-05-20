@@ -100,20 +100,31 @@ export default function AdminArtifacts() {
       const supabase = createClient();
       setLoading(true);
       
-      const { count } = await supabase
+      const { count, error: countError } = await supabase
         .from('museum_artifacts')
         .select('*', { count: 'exact', head: true });
+
+      if (countError) {
+        console.error("Failed to count artifacts from Supabase:", countError);
+      }
         
       if (count !== null) setTotalCount(count);
 
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('museum_artifacts')
         .select('id, metadata, created_at')
         .range(from, to)
         .order('id', { ascending: true });
+
+      if (error) {
+        console.error("Failed to load artifacts from Supabase:", error);
+        setArtifacts([]);
+        setLoading(false);
+        return;
+      }
         
       if (data) {
         const formatted = (data as ArtifactRow[]).map(row => {

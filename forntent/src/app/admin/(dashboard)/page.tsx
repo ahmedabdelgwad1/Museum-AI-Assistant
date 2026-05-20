@@ -89,9 +89,14 @@ export default function AdminDashboard() {
       const supabase = createClient();
 
       // 1. Total Artifacts & Sections Distribution
-      const { count, data } = await supabase
+      const { count, data, error } = await supabase
         .from('museum_artifacts')
         .select('metadata, created_at', { count: 'exact' });
+
+      if (error) {
+        console.error("Failed to load dashboard stats from Supabase:", error);
+        return;
+      }
       
       if (count !== null) {
         setTotalArtifacts(count);
@@ -137,13 +142,15 @@ export default function AdminDashboard() {
       }
 
       // 2. Recent Activity (last 3 items)
-      const { data: recentData } = await supabase
+      const { data: recentData, error: recentError } = await supabase
         .from('museum_artifacts')
         .select('id, metadata, created_at')
         .order('created_at', { ascending: false })
         .limit(3);
 
-      if (recentData) {
+      if (recentError) {
+        console.error("Failed to load recent artifacts from Supabase:", recentError);
+      } else if (recentData) {
         const formattedActivity = (recentData as ArtifactStatsRow[]).map(item => {
           const meta = readMetadata(item.metadata);
           const name = isAr ? meta?.artifact_name_ar : meta?.artifact_name_en;

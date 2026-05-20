@@ -5,6 +5,7 @@ import { useAdminLocale } from "@/context/AdminLocaleContext";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { createArtifact } from "@/lib/api";
 
 type ArtifactMetadata = {
   section_number?: string | number;
@@ -53,9 +54,14 @@ export default function AdminNewArtifact() {
   useEffect(() => {
     async function fetchSections() {
       const supabase = createClient();
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("museum_artifacts")
         .select("metadata");
+
+      if (error) {
+        console.error("Failed to load sections from Supabase:", error);
+        return;
+      }
 
       const sectionMap = new Map<string, SectionOption>();
 
@@ -103,29 +109,24 @@ export default function AdminNewArtifact() {
     // Fallback image url
     const DEFAULT_IMAGE = "https://lh3.googleusercontent.com/aida-public/AB6AXuBA6FlkSGl2M4zEEA3OinZ07qJmwBvRI3Hn1vCCQkuHrizJB7RXQSHITEhDZtz-cJYxOTFB2JLhP_LrTleyttObKZ6KrRxTraIylhVPE2Ck8npsNHYsErkYKZcNOTIioWhZdMH8oQ6n0MSUI3jYYOuaZPdhM_3fk-TpP-nVpaO3-RBlJkM7oq_36irpT5Ni1XBWhukCz4gqoCaYrwKHh2GeDktpARciMtqUeeuvozJUshuODSg2nvY0DC7m0tYG9pJIR_C2EMjpxlU";
 
-    const metadata = {
+    try {
+      await createArtifact({
       artifact_name_en: name,
       artifact_name_ar: name, 
+        description_en: desc || "No description provided.",
+        description_ar: desc || "No description provided.",
       section_number: selectedSection?.id || category || "",
       section_name_en: selectedSection?.nameEn || category || "Unknown",
       section_name_ar: selectedSection?.nameAr || category || "Unknown",
-      hall,
+        hall_en: hall,
+        hall_ar: hall,
       image_url: imageUrl?.trim() || DEFAULT_IMAGE
-    };
-
-    const supabase = createClient();
-    const { error } = await supabase.from('museum_artifacts').insert([
-      {
-        content: desc || "No description provided.",
-        metadata: metadata
-      }
-    ]);
-
-    setLoading(false);
-    if (!error) {
+      });
       router.push("/admin/artifacts");
-    } else {
-      alert("Error saving artifact: " + error.message);
+    } catch (error) {
+      alert("Error saving artifact: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setLoading(false);
     }
   }
 

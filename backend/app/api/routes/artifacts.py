@@ -1,22 +1,40 @@
 """Artifacts endpoints — GET /artifacts, GET /artifacts/{id}, GET /search."""
 
 import logging
+from uuid import uuid4
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.models import (
     ArtifactDetail,
+    ArtifactCreateRequest,
     ArtifactBase,
     ArtifactListResponse,
     SearchResponse,
     SearchResult,
 )
-from app.rag.vectorstore import list_all, get_by_id, collection_count
+from app.rag.embedder import embed_query
+from app.rag.vectorstore import add_documents, list_all, get_by_id, collection_count
 from app.rag.retriever import semantic_search
+from app.utils.helpers import clean_text
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/artifacts", tags=["artifacts"])
+
+
+def _build_document_text(meta: dict) -> str:
+    """Build the searchable text stored with an artifact embedding."""
+    parts = [
+        f"Name: {meta.get('artifact_name_en', '')} / {meta.get('artifact_name_ar', '')}",
+        f"Category: {meta.get('category_en', '')} / {meta.get('category_ar', '')}",
+        f"Hall: {meta.get('hall_en', '')} / {meta.get('hall_ar', '')}",
+        f"Section: {meta.get('section_name_en', '')} / {meta.get('section_name_ar', '')}",
+        f"Discovery Site: {meta.get('discovery_site_en', '')} / {meta.get('discovery_site_ar', '')}",
+        f"Description: {meta.get('description_en', '')}",
+        f"وصف: {meta.get('description_ar', '')}",
+    ]
+    return "\n".join(part for part in parts if part.split(": ", 1)[-1].strip(" /"))
 
 
 def _metadata_to_base(art_id: str, meta: dict) -> ArtifactBase:
@@ -86,6 +104,55 @@ async def list_artifacts(
         page_size=page_size,
         artifacts=artifacts,
     )
+
+
+@router.post("", response_model=ArtifactDetail, status_code=status.HTTP_201_CREATED, summary="Create artifact")
+async def create_artifact(request: ArtifactCreateRequest) -> ArtifactDetail:
+    """Create an artifact and store its pgvector embedding in Supabase."""
+    name_en = clean_text(request.artifact_name_en)
+    if not name_en:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="artifact_name_en is required.",
+        )
+
+    artifact_id = f"artifact_{uuid4().hex[:12]}"
+    metadata = {
+        "artifact_id": artifact_id,
+        "artifact_name_en": name_en,
+        "artifact_name_ar": clean_text(request.artifact_name_ar or request.artifact_name_en),
+        "description_en": clean_text(request.description_en or ""),
+        "description_ar": clean_text(request.description_ar or request.description_en or ""),
+        "category_en": clean_text(request.category_en or ""),
+        "category_ar": clean_text(request.category_ar or ""),
+        "hall_en": clean_text(request.hall_en or ""),
+        "hall_ar": clean_text(request.hall_ar or ""),
+        "discovery_site_en": clean_text(request.discovery_site_en or ""),
+        "discovery_site_ar": clean_text(request.discovery_site_ar or ""),
+        "section_name_en": clean_text(request.section_name_en or ""),
+        "section_name_ar": clean_text(request.section_name_ar or ""),
+        "section_number": clean_text(str(request.section_number or "")),
+        "link": clean_text(request.link or ""),
+        "image_url": clean_text(request.image_url or ""),
+    }
+    document = _build_document_text(metadata) or name_en
+    embedding = embed_query(document)
+
+    try:
+        add_documents(
+            ids=[artifact_id],
+            embeddings=[embedding],
+            documents=[document],
+            metadatas=[metadata],
+        )
+    except Exception as exc:
+        logger.exception("Failed to create artifact in Supabase")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to save artifact: {exc}",
+        ) from exc
+
+    return _metadata_to_detail(artifact_id, metadata)
 
 
 @router.get("/search", response_model=SearchResponse, summary="Semantic search")

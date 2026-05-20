@@ -29,6 +29,24 @@ class ArtifactDetail(ArtifactBase):
     description_ar: Optional[str] = None
 
 
+class ArtifactCreateRequest(BaseModel):
+    artifact_name_en: str
+    artifact_name_ar: Optional[str] = None
+    description_en: Optional[str] = None
+    description_ar: Optional[str] = None
+    category_en: Optional[str] = None
+    category_ar: Optional[str] = None
+    hall_en: Optional[str] = None
+    hall_ar: Optional[str] = None
+    discovery_site_en: Optional[str] = None
+    discovery_site_ar: Optional[str] = None
+    section_name_en: Optional[str] = None
+    section_name_ar: Optional[str] = None
+    section_number: Optional[str] = None
+    link: Optional[str] = None
+    image_url: Optional[str] = None
+
+
 class ArtifactListResponse(BaseModel):
     total: int
     page: int
