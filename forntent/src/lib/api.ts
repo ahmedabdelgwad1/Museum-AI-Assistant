@@ -7,6 +7,23 @@ const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 // A generic client safe for both Server and Client components (for public data)
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
+// Supabase Storage bucket name for artifact images
+const IMAGE_BUCKET = "artifact-images"
+
+export async function uploadImage(file: File): Promise<string> {
+  const ext = file.name.split(".").pop() || "jpg"
+  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+  const { error } = await supabase.storage
+    .from(IMAGE_BUCKET)
+    .upload(fileName, file, { upsert: false, contentType: file.type })
+
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(fileName)
+  return data.publicUrl
+}
+
 export async function getArtifacts(sectionId?: number, search?: string) {
   try {
     let query = supabase.from('museum_artifacts').select('id, metadata');
