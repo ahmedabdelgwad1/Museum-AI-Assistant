@@ -86,21 +86,22 @@ export default function AdminArtifacts() {
   const isAr = locale === "ar";
   const t = L[isAr ? "ar" : "en"];
 
-  const [artifacts, setArtifacts] = useState<ArtifactTableItem[]>([]);
+  // Holds all 30 fetched items; pagination is done client-side
+  const [allArtifacts, setAllArtifacts] = useState<ArtifactTableItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
-  
-  // Pagination
+
+  // Pagination — 5 items per page, max 30 items shown (6 pages)
   const [page, setPage] = useState(1);
-  const limit = 5;
+  const ITEMS_PER_PAGE = 5;
+  const MAX_ITEMS = 30;
 
   useEffect(() => {
     async function fetchArtifacts() {
       setLoading(true);
-      const { total, records } = await getAdminArtifacts(page, limit);
-      setTotalCount(total);
-        
+      // Fetch only the first 30 items in one request
+      const { records } = await getAdminArtifacts(1, MAX_ITEMS);
+
       if (records) {
         const formatted = (records as ArtifactRow[]).map(row => {
           const meta = readMetadata(row.metadata);
@@ -114,20 +115,23 @@ export default function AdminArtifacts() {
             image: meta?.image_url || DEFAULT_IMAGE
           };
         });
-        setArtifacts(formatted);
+        setAllArtifacts(formatted);
       }
       setLoading(false);
     }
     fetchArtifacts().catch((error) => {
       console.error("Failed to load artifacts from backend:", error);
-      setArtifacts([]);
+      setAllArtifacts([]);
       setLoading(false);
     });
-  }, [page, isAr]);
+  }, [isAr]);
 
-  const totalPages = Math.ceil(totalCount / limit);
-  const startItem = totalCount === 0 ? 0 : (page - 1) * limit + 1;
-  const endItem = Math.min(page * limit, totalCount);
+  // Client-side pagination
+  const totalCount = allArtifacts.length;
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const startItem = totalCount === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
+  const endItem = Math.min(page * ITEMS_PER_PAGE, totalCount);
+  const artifacts = allArtifacts.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const handleDelete = async (id: string | number) => {
     if (!window.confirm(t.deleteConfirm)) return;
@@ -142,12 +146,13 @@ export default function AdminArtifacts() {
       return;
     }
 
-    const nextArtifacts = artifacts.filter((item) => item.id !== id);
-    setArtifacts(nextArtifacts);
-    setTotalCount((current) => Math.max(0, current - 1));
+    const nextAll = allArtifacts.filter((item) => item.id !== id);
+    setAllArtifacts(nextAll);
     setDeletingId(null);
 
-    if (nextArtifacts.length === 0 && page > 1) {
+    // If current page becomes empty after delete, go back one page
+    const newTotalPages = Math.ceil(nextAll.length / ITEMS_PER_PAGE);
+    if (page > newTotalPages && page > 1) {
       setPage((current) => current - 1);
     }
   };

@@ -417,3 +417,48 @@ python3 -m compileall backend/app backend/main.py
 ```
 
 - Result: both passed.
+
+---
+
+## 2026-05-20 — Fix Next.js 16 Build Warnings (Turbopack Root & Middleware→Proxy)
+
+### Summary
+
+تم إصلاح تحذيرَين (Warnings) كانا يظهران في الـ Build Output بدون أن يوقفا الـ Deployment، وذلك للحفاظ على Clean Build Console ومنع أي مشاكل مستقبلية مع تحديثات Next.js.
+
+### Root Cause Analysis
+
+**تحذير ١ — Workspace Root Ambiguity:**
+Next.js اكتشف أكثر من ملف `package-lock.json` على الجهاز (`/Users/apple/package-lock.json` و `forntent/package-lock.json`)، فاختار الغلط وأصدر تحذير إن الـ workspace root مش محدد بشكل صحيح.
+
+**تحذير ٢ — Deprecated Middleware Convention:**
+Next.js 16 غيّر الـ convention الخاص بالـ middleware؛ بقى اسم الملف والدالة المعيارية هو `proxy` بدل `middleware`.
+
+### Frontend Changes
+
+- Updated `forntent/next.config.ts`
+  - Added explicit `turbopack.root` pointing to `path.resolve(__dirname)` (the `forntent` directory).
+  - Silences the "workspace root inferred incorrectly" warning caused by multiple `package-lock.json` files detected in parent directories.
+
+- Renamed `forntent/src/middleware.ts` → `forntent/src/proxy.ts`
+  - Follows the new Next.js 16 file convention: `proxy.ts` instead of `middleware.ts`.
+  - Renamed the exported function from `middleware` to `proxy` as required by the new convention.
+  - All logic inside the function (`updateSession` for Supabase auth) remains unchanged.
+
+### Files Changed
+
+| File | Action |
+|------|--------|
+| `forntent/next.config.ts` | Modified — added `turbopack.root` |
+| `forntent/src/middleware.ts` | Deleted |
+| `forntent/src/proxy.ts` | Created (renamed + function export updated) |
+
+### Verification
+
+- Ran:
+
+```bash
+npm run build
+```
+
+- Result: passed with zero warnings. Console output shows `✓ Compiled successfully` and `ƒ Proxy (Middleware)` route confirmed active.
