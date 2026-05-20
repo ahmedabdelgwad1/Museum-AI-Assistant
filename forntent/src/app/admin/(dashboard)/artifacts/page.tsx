@@ -169,7 +169,7 @@ export default function AdminArtifacts() {
       await deleteArtifact(id);
     } catch (error) {
       console.error("Failed to delete artifact from backend:", error);
-      alert(t.deleteError);
+      alert(`${t.deleteError}\n\nDetails: ${error instanceof Error ? error.message : String(error)}`);
       setDeletingId(null);
       return;
     }
@@ -215,7 +215,8 @@ export default function AdminArtifacts() {
       setTimeout(() => setEditingItem(null), 900);
     } catch (err) {
       console.error(err);
-      setEditMsg({ type: "err", text: t.editError });
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      setEditMsg({ type: "err", text: `${t.editError} (${errorMsg})` });
     } finally {
       setEditSaving(false);
     }
