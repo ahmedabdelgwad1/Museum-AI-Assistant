@@ -5,7 +5,7 @@ import { Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { hFont, bodyFont, dir } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { deleteArtifact, getAdminArtifacts } from "@/lib/api";
 
 const L = {
   en: {
@@ -97,37 +97,12 @@ export default function AdminArtifacts() {
 
   useEffect(() => {
     async function fetchArtifacts() {
-      const supabase = createClient();
       setLoading(true);
-      
-      const { count, error: countError } = await supabase
-        .from('museum_artifacts')
-        .select('*', { count: 'exact', head: true });
-
-      if (countError) {
-        console.error("Failed to count artifacts from Supabase:", countError);
-      }
+      const { total, records } = await getAdminArtifacts(page, limit);
+      setTotalCount(total);
         
-      if (count !== null) setTotalCount(count);
-
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
-
-      const { data, error } = await supabase
-        .from('museum_artifacts')
-        .select('id, metadata, created_at')
-        .range(from, to)
-        .order('id', { ascending: true });
-
-      if (error) {
-        console.error("Failed to load artifacts from Supabase:", error);
-        setArtifacts([]);
-        setLoading(false);
-        return;
-      }
-        
-      if (data) {
-        const formatted = (data as ArtifactRow[]).map(row => {
+      if (records) {
+        const formatted = (records as ArtifactRow[]).map(row => {
           const meta = readMetadata(row.metadata);
           return {
             id: row.id,
@@ -143,7 +118,11 @@ export default function AdminArtifacts() {
       }
       setLoading(false);
     }
-    fetchArtifacts();
+    fetchArtifacts().catch((error) => {
+      console.error("Failed to load artifacts from backend:", error);
+      setArtifacts([]);
+      setLoading(false);
+    });
   }, [page, isAr]);
 
   const totalPages = Math.ceil(totalCount / limit);
@@ -154,13 +133,10 @@ export default function AdminArtifacts() {
     if (!window.confirm(t.deleteConfirm)) return;
 
     setDeletingId(id);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("museum_artifacts")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
+    try {
+      await deleteArtifact(id);
+    } catch (error) {
+      console.error("Failed to delete artifact from backend:", error);
       alert(t.deleteError);
       setDeletingId(null);
       return;

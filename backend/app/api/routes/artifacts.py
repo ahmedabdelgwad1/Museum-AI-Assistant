@@ -14,7 +14,14 @@ from app.models import (
     SearchResult,
 )
 from app.rag.embedder import embed_query
-from app.rag.vectorstore import add_documents, list_all, get_by_id, collection_count
+from app.rag.vectorstore import (
+    add_documents,
+    delete_by_id,
+    list_all,
+    list_records,
+    get_by_id,
+    collection_count,
+)
 from app.rag.retriever import semantic_search
 from app.utils.helpers import clean_text
 
@@ -155,6 +162,16 @@ async def create_artifact(request: ArtifactCreateRequest) -> ArtifactDetail:
     return _metadata_to_detail(artifact_id, metadata)
 
 
+@router.get("/admin", summary="List raw artifacts for admin dashboard")
+async def list_admin_artifacts(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=1000),
+) -> dict:
+    """List raw artifact records through the backend service role."""
+    offset = (page - 1) * page_size
+    return list_records(limit=page_size, offset=offset)
+
+
 @router.get("/search", response_model=SearchResponse, summary="Semantic search")
 async def search_artifacts(
     q: str = Query(..., description="Search query (Arabic or English)"),
@@ -210,3 +227,16 @@ async def get_artifact(artifact_id: str) -> ArtifactDetail:
             detail=f"Artifact '{artifact_id}' not found.",
         )
     return _metadata_to_detail(result["id"], result["metadata"])
+
+
+@router.delete("/{artifact_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete artifact")
+async def delete_artifact(artifact_id: str) -> None:
+    """Delete an artifact through the backend service role."""
+    try:
+        delete_by_id(artifact_id)
+    except Exception as exc:
+        logger.exception("Failed to delete artifact from Supabase")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to delete artifact: {exc}",
+        ) from exc

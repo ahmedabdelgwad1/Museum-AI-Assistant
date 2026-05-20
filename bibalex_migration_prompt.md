@@ -1,3 +1,76 @@
+## CURRENT IMPLEMENTATION NOTES — CHANGE LOG
+
+> This section is the source of truth for the current project state. The older prompt below is historical planning context and may still mention ChromaDB because it describes the original migration request.
+
+### 2026-05-20 — Supabase/pgvector Runtime Migration
+
+- The runtime vector store has been migrated from local ChromaDB to **Supabase PostgreSQL + pgvector**.
+- Backend semantic search now uses `backend/app/rag/vectorstore.py`, which calls the Supabase RPC function configured by `SUPABASE_FUNCTION` with the default value `match_artifacts`.
+- Backend artifact data is stored in the Supabase table configured by `SUPABASE_TABLE` with the default value `museum_artifacts`.
+- ChromaDB is no longer a backend dependency and is not present in `backend/requirements.txt`.
+- The local ChromaDB folder `backend/data/chroma_db` was removed from the workspace.
+- `backend/.dockerignore` was added so future generated Chroma folders, logs, audio files, and local env files are not copied into Docker images.
+- `backend/main.py` health checks now report `supabase_pgvector` instead of `chromadb`.
+- Backend startup no longer runs legacy auto-indexing into ChromaDB. If Supabase is empty, it logs a warning telling the developer to run `scripts/index_artifacts.py`.
+
+### 2026-05-20 — Backend Artifact APIs
+
+- `backend/app/api/routes/artifacts.py` now includes `POST /artifacts`.
+- `POST /artifacts` creates an artifact through the backend, builds searchable text, generates an embedding, and stores `id`, `content`, `metadata`, and `embedding` in Supabase.
+- `backend/app/models.py` now includes `ArtifactCreateRequest` for artifact creation.
+- `backend/scripts/index_artifacts.py` now indexes CSV data into Supabase pgvector instead of ChromaDB.
+- `backend/scripts/test_rag.py` now reports Supabase pgvector indexed artifact count.
+- Backend code comments and API descriptions were updated to say Supabase pgvector where they previously referred to ChromaDB.
+
+### 2026-05-20 — Frontend Supabase/Admin Fixes
+
+- Admin Overview (`forntent/src/app/admin/(dashboard)/page.tsx`) already reads from `museum_artifacts`; error logging was added so Supabase/RLS failures are visible in the browser console.
+- Admin Collection (`forntent/src/app/admin/(dashboard)/artifacts/page.tsx`) already reads from `museum_artifacts`; error logging was added for count and list queries.
+- Admin Acquisitions (`forntent/src/app/admin/(dashboard)/artifacts/new/page.tsx`) no longer inserts directly into Supabase from the browser.
+- Admin Acquisitions now calls the backend `POST /artifacts` endpoint through `createArtifact()` in `forntent/src/lib/api.ts`.
+- This ensures newly added artifacts get embeddings and become searchable through pgvector.
+- `forntent/src/lib/api.ts` now throws/logs Supabase errors instead of silently returning empty data for failed artifact reads.
+- `forntent/next.config.ts` now sets `turbopack.root` to the frontend folder, fixing Next.js build root detection when another lockfile exists higher up the filesystem.
+
+### 2026-05-20 — Cloud Deployment Notes
+
+- Current cloud data layer: **Supabase Cloud** with PostgreSQL + pgvector.
+- Recommended full cloud setup:
+  - Frontend: Vercel, Firebase Hosting, or Azure Static Web Apps.
+  - Backend: Render, Railway, Google Cloud Run, Azure Container Apps, or Azure App Service.
+  - Database/vector store: Supabase Cloud.
+- Backend environment variables:
+
+```env
+GROQ_API_KEY=your_groq_key
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_KEY=your_supabase_service_role_key
+SUPABASE_TABLE=museum_artifacts
+SUPABASE_FUNCTION=match_artifacts
+CORS_ORIGINS=["https://your-frontend-domain"]
+```
+
+- Frontend environment variables:
+
+```env
+NEXT_PUBLIC_API_URL=https://your-backend-domain
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+- Never expose the Supabase service role key in the frontend. The frontend must only use the anon key.
+
+### Verification Log
+
+- `python3 -m compileall backend/app backend/main.py` passed.
+- `npm run build` inside `forntent` passed after setting `turbopack.root`.
+
+### Ongoing Rule
+
+- Any future backend, frontend, deployment, Supabase, or RAG behavior change should be added to this change log with the date, affected files, and a short reason.
+
+---
+
 You are an expert Python developer. I have an existing museum chatbot codebase that I want to migrate and upgrade. Below I will show you the OLD code in full, then describe exactly what to keep, what to change, and what the new architecture should be.
 
 Read everything carefully before writing a single line of code.

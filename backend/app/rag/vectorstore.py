@@ -148,6 +148,12 @@ def get_by_id(artifact_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def delete_by_id(artifact_id: str) -> None:
+    """Delete a single artifact by its Supabase row ID."""
+    client = get_supabase_client()
+    client.table(settings.supabase_table).delete().eq("id", artifact_id).execute()
+
+
 def collection_count() -> int:
     """Return total number of documents in the Supabase table."""
     client = get_supabase_client()
@@ -157,6 +163,36 @@ def collection_count() -> int:
         .execute()
     )
     return response.count or 0
+
+
+def list_records(limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+    """List raw artifact records for admin views."""
+    client = get_supabase_client()
+    try:
+        response = (
+            client.table(settings.supabase_table)
+            .select("id, content, metadata, created_at")
+            .order("id")
+            .range(offset, offset + limit - 1)
+            .execute()
+        )
+    except Exception:
+        response = (
+            client.table(settings.supabase_table)
+            .select("id, content, metadata")
+            .order("id")
+            .range(offset, offset + limit - 1)
+            .execute()
+        )
+    rows = response.data or []
+    for row in rows:
+        meta = row.get("metadata", {})
+        if isinstance(meta, str):
+            try:
+                row["metadata"] = json.loads(meta)
+            except Exception:
+                row["metadata"] = {}
+    return {"total": collection_count(), "records": rows}
 
 
 def list_all(limit: int = 100, offset: int = 0) -> Dict[str, Any]:

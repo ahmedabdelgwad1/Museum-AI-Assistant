@@ -63,6 +63,40 @@ export async function getArtifact(id: string) {
   }
 }
 
+export type AdminArtifactRecord = {
+  id: string | number
+  content?: string | null
+  metadata: Record<string, any> | string | null
+  created_at?: string | null
+}
+
+export async function getAdminArtifacts(page = 1, pageSize = 100) {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  })
+  const res = await fetch(`${API_BASE}/artifacts/admin?${params.toString()}`, {
+    cache: "no-store",
+  })
+  const payload = await res.json().catch(() => null)
+  if (!res.ok) {
+    const detail = payload?.detail || "Failed to load admin artifacts."
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail))
+  }
+  return payload as { total: number; records: AdminArtifactRecord[] }
+}
+
+export async function deleteArtifact(id: string | number) {
+  const res = await fetch(`${API_BASE}/artifacts/${encodeURIComponent(String(id))}`, {
+    method: "DELETE",
+  })
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null)
+    const detail = payload?.detail || "Failed to delete artifact."
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail))
+  }
+}
+
 export type CreateArtifactInput = {
   artifact_name_en: string
   artifact_name_ar?: string

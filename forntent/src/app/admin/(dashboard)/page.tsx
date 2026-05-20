@@ -4,8 +4,8 @@ import { Building2, Clock, MoreHorizontal } from "lucide-react";
 import { hFont, bodyFont, dir } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
 
-import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+import { getAdminArtifacts } from "@/lib/api";
 
 const L = {
   en: {
@@ -86,29 +86,16 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function fetchStats() {
-      const supabase = createClient();
+      const { total, records } = await getAdminArtifacts(1, 1000);
+      setTotalArtifacts(total);
 
-      // 1. Total Artifacts & Sections Distribution
-      const { count, data, error } = await supabase
-        .from('museum_artifacts')
-        .select('metadata, created_at', { count: 'exact' });
-
-      if (error) {
-        console.error("Failed to load dashboard stats from Supabase:", error);
-        return;
-      }
-      
-      if (count !== null) {
-        setTotalArtifacts(count);
-      }
-
-      if (data) {
+      if (records) {
         // Sections
         const sectionCounts: Record<string, number> = {};
         let monthCount = 0;
         const now = new Date();
         
-        (data as ArtifactStatsRow[]).forEach(item => {
+        (records as ArtifactStatsRow[]).forEach(item => {
            const meta = readMetadata(item.metadata);
            const secName = isAr ? meta?.section_name_ar : meta?.section_name_en;
            if (secName) {
@@ -141,16 +128,15 @@ export default function AdminDashboard() {
         setSectionsData(chartData);
       }
 
-      // 2. Recent Activity (last 3 items)
-      const { data: recentData, error: recentError } = await supabase
-        .from('museum_artifacts')
-        .select('id, metadata, created_at')
-        .order('created_at', { ascending: false })
-        .limit(3);
+      const recentData = [...(records as ArtifactStatsRow[])]
+        .sort((a, b) => {
+          const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return bTime - aTime;
+        })
+        .slice(0, 3);
 
-      if (recentError) {
-        console.error("Failed to load recent artifacts from Supabase:", recentError);
-      } else if (recentData) {
+      if (recentData) {
         const formattedActivity = (recentData as ArtifactStatsRow[]).map(item => {
           const meta = readMetadata(item.metadata);
           const name = isAr ? meta?.artifact_name_ar : meta?.artifact_name_en;
@@ -167,7 +153,9 @@ export default function AdminDashboard() {
         setRecentActivity(formattedActivity);
       }
     }
-    fetchStats();
+    fetchStats().catch((error) => {
+      console.error("Failed to load admin dashboard from backend:", error);
+    });
   }, [isAr]);
 
   return (

@@ -3,9 +3,8 @@ import { Info, PenTool, Camera, Loader2 } from "lucide-react";
 import { getDictionary } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { createArtifact } from "@/lib/api";
+import { createArtifact, getAdminArtifacts } from "@/lib/api";
 
 type ArtifactMetadata = {
   section_number?: string | number;
@@ -53,19 +52,11 @@ export default function AdminNewArtifact() {
 
   useEffect(() => {
     async function fetchSections() {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("museum_artifacts")
-        .select("metadata");
-
-      if (error) {
-        console.error("Failed to load sections from Supabase:", error);
-        return;
-      }
+      const { records } = await getAdminArtifacts(1, 1000);
 
       const sectionMap = new Map<string, SectionOption>();
 
-      data?.forEach((row) => {
+      records?.forEach((row) => {
         const meta = readMetadata(row.metadata);
         const sectionId = meta.section_number?.toString().trim();
 
@@ -92,7 +83,9 @@ export default function AdminNewArtifact() {
       );
     }
 
-    fetchSections();
+    fetchSections().catch((error) => {
+      console.error("Failed to load sections from backend:", error);
+    });
   }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
