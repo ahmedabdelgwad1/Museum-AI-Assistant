@@ -333,3 +333,87 @@ npm run build
 ```
 
 - Result: both passed.
+
+---
+
+## 2026-05-20 — Add Admin Supabase Fallback When Backend Is Offline
+
+### Problem
+
+The public language/sections pages could show sections because they read directly from Supabase in the browser. Admin pages were routed through `NEXT_PUBLIC_API_URL` and stayed empty when the local backend at `http://127.0.0.1:8000` was not running.
+
+### Frontend Changes
+
+- Updated `forntent/src/lib/api.ts`
+  - `getAdminArtifacts()` now tries `GET /artifacts/admin` first.
+  - If the backend is unavailable or returns an error, it falls back to reading `museum_artifacts` directly through the Supabase browser client.
+  - This lets Admin Overview, Collection, and the Acquisitions section dropdown show data during local frontend-only development.
+  - Artifact creation still uses the backend because embeddings must be generated server-side.
+
+### Important Note
+
+For full admin functionality, especially creating searchable artifacts and deleting records, the FastAPI backend still needs to be running because those actions require the Supabase service role key and/or embedding generation.
+
+### Verification
+
+- Confirmed local backend was not reachable at `http://127.0.0.1:8000/health`.
+- Ran:
+
+```bash
+npm run build
+python3 -m compileall backend/app backend/main.py
+```
+
+- Result: both passed.
+
+---
+
+## 2026-05-20 — Adopt Hybrid Admin Architecture
+
+### Decision
+
+Admin read operations now use Supabase directly from the Next.js frontend with the public anon key. Admin write/delete operations stay routed through FastAPI.
+
+### Final Admin Flow
+
+```text
+Admin Overview / Collection / section dropdown
+  -> Next.js
+  -> Supabase direct SELECT
+
+Admin Create Artifact
+  -> Next.js
+  -> FastAPI POST /artifacts
+  -> embedding generation
+  -> Supabase upsert
+
+Admin Delete Artifact
+  -> Next.js
+  -> FastAPI DELETE /artifacts/{artifact_id}
+  -> Supabase delete with service role key
+```
+
+### Frontend Changes
+
+- Updated `forntent/src/lib/api.ts`
+  - `getAdminArtifacts()` now reads directly from Supabase.
+  - Removed the backend-first admin read attempt and fallback branch.
+  - Selects `id`, `content`, and `metadata` from `museum_artifacts`.
+
+### Security Model
+
+- Supabase anon key is used only for read/list operations.
+- Supabase RLS should allow `SELECT` on public artifact data.
+- Supabase RLS should block anon `INSERT`, `UPDATE`, and `DELETE`.
+- FastAPI remains responsible for privileged write/delete actions and embedding generation.
+
+### Verification
+
+- Ran:
+
+```bash
+npm run build
+python3 -m compileall backend/app backend/main.py
+```
+
+- Result: both passed.
