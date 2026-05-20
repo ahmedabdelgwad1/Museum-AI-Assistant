@@ -17,22 +17,18 @@ def _build_where_filter(
     discovery_site: Optional[str] = None,
     section: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Build a ChromaDB $and / $or where-filter from optional fields."""
-    conditions = []
+    """Build a metadata substring filter from optional fields."""
+    filters = {}
     if hall:
-        conditions.append({"hall_en": {"$contains": hall}})
+        filters["hall_en"] = hall
     if category:
-        conditions.append({"category_en": {"$contains": category}})
+        filters["category_en"] = category
     if discovery_site:
-        conditions.append({"discovery_site_en": {"$contains": discovery_site}})
+        filters["discovery_site_en"] = discovery_site
     if section:
-        conditions.append({"section_name_en": {"$contains": section}})
+        filters["section_name_en"] = section
 
-    if not conditions:
-        return None
-    if len(conditions) == 1:
-        return conditions[0]
-    return {"$and": conditions}
+    return filters or None
 
 
 def semantic_search(
@@ -49,7 +45,7 @@ def semantic_search(
     Returns a list of result dicts with metadata and relevance score.
     """
     if collection_count() == 0:
-        logger.warning("ChromaDB collection is empty. Run the indexing script first.")
+        logger.warning("Supabase artifact table is empty. Run the indexing script first.")
         return []
 
     k = top_k or settings.top_k_results

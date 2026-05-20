@@ -162,7 +162,7 @@ def retrieve_and_grade(state: GraphState) -> GraphState:
     """
     Node 2 — Retriever + Grader.
 
-    - Runs semantic search in ChromaDB using the rewritten query.
+    - Runs semantic search in Supabase pgvector using the rewritten query.
     - Sets ``retrieved_docs`` in state.
     - Calls the Groq LLM to grade relevance.
     - Sets ``relevance_score`` in state.
@@ -298,4 +298,3 @@ def generate_answer(state: GraphState) -> GraphState:
         )
 
     return {**state, "generation": answer}
-

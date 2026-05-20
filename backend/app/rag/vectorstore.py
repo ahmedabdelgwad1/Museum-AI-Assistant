@@ -1,4 +1,4 @@
-"""Supabase pgvector store operations (replaces ChromaDB)."""
+"""Supabase pgvector store operations."""
 
 import logging
 import json
@@ -31,8 +31,7 @@ def query_collection(
     """
     Query Supabase using pgvector similarity search.
 
-    Returns a dict with ids, documents, metadatas, distances
-    (compatible with the old ChromaDB interface).
+    Returns a dict with ids, documents, metadatas, distances.
     """
     client = get_supabase_client()
 
@@ -41,7 +40,7 @@ def query_collection(
             settings.supabase_function,
             {
                 "query_embedding": query_embedding,
-                "match_count": n_results,
+                "match_count": n_results * 4 if where else n_results,
             },
         ).execute()
 
@@ -53,9 +52,6 @@ def query_collection(
         distances = []
 
         for row in rows:
-            ids.append(str(row.get("id", "")))
-            documents.append(row.get("content", ""))
-
             # Parse metadata (stored as JSON string or dict)
             meta = row.get("metadata", {})
             if isinstance(meta, str):
@@ -63,11 +59,19 @@ def query_collection(
                     meta = json.loads(meta)
                 except Exception:
                     meta = {}
+            if where and not _metadata_matches(meta, where):
+                continue
+
+            ids.append(str(row.get("id", "")))
+            documents.append(row.get("content", ""))
             metadatas.append(meta)
 
             # similarity → distance (1 - similarity)
             similarity = row.get("similarity", 0.0)
             distances.append(1.0 - similarity)
+
+            if len(metadatas) >= n_results:
+                break
 
         return {
             "ids": [ids],
@@ -79,6 +83,39 @@ def query_collection(
     except Exception as e:
         logger.error("Supabase query failed: %s", e)
         return {"ids": [[]], "documents": [[]], "metadatas": [[]], "distances": [[]]}
+
+
+def _metadata_matches(meta: Dict[str, Any], filters: Dict[str, str]) -> bool:
+    """Return whether metadata contains all requested filter values."""
+    for key, expected in filters.items():
+        value = str(meta.get(key, "")).lower()
+        if str(expected).lower() not in value:
+            return False
+    return True
+
+
+def add_documents(
+    ids: List[str],
+    embeddings: List[List[float]],
+    documents: List[str],
+    metadatas: List[Dict[str, Any]],
+) -> None:
+    """Upsert embedded artifacts into the Supabase table."""
+    client = get_supabase_client()
+    records = [
+        {
+            "id": artifact_id,
+            "content": document,
+            "metadata": metadata,
+            "embedding": embedding,
+        }
+        for artifact_id, document, metadata, embedding in zip(
+            ids, documents, metadatas, embeddings
+        )
+    ]
+    if not records:
+        return
+    client.table(settings.supabase_table).upsert(records).execute()
 
 
 def get_by_id(artifact_id: str) -> Optional[Dict[str, Any]]:
@@ -114,16 +151,12 @@ def get_by_id(artifact_id: str) -> Optional[Dict[str, Any]]:
 def collection_count() -> int:
     """Return total number of documents in the Supabase table."""
     client = get_supabase_client()
-    try:
-        response = (
-            client.table(settings.supabase_table)
-            .select("id", count="exact")
-            .execute()
-        )
-        return response.count or 0
-    except Exception as e:
-        logger.error("Supabase count failed: %s", e)
-        return 0
+    response = (
+        client.table(settings.supabase_table)
+        .select("id", count="exact")
+        .execute()
+    )
+    return response.count or 0
 
 
 def list_all(limit: int = 100, offset: int = 0) -> Dict[str, Any]:

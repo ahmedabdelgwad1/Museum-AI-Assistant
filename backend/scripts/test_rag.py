@@ -81,7 +81,7 @@ async def main() -> None:
     print(f"\n{'='*72}")
     print("  Bibliotheca Alexandrina Museum — Corrective RAG Test Suite")
     print(f"{'='*72}")
-    print(f"  ChromaDB: {count} artifacts indexed")
+    print(f"  Supabase pgvector: {count} artifacts indexed")
 
     if count == 0:
         print("\n⚠️  Collection is empty!")

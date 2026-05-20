@@ -44,17 +44,14 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("Embedding model pre-load skipped: %s", exc)
 
-    # Log ChromaDB status
+    # Log Supabase pgvector status
     try:
         count = collection_count()
-        logger.info("ChromaDB collection has %d artifacts indexed.", count)
+        logger.info("Supabase pgvector table has %d artifacts indexed.", count)
         if count == 0:
-            logger.warning("Collection is empty! Running auto-indexing...")
-            from scripts.index_artifacts import main as index_main
-            index_main()
-            logger.info("Auto-indexing complete!")
+            logger.warning("Supabase artifact table is empty. Run scripts/index_artifacts.py to load data.")
     except Exception as exc:
-        logger.warning("ChromaDB status check failed: %s", exc)
+        logger.warning("Supabase pgvector status check failed: %s", exc)
 
     logger.info("API ready. Listening on http://%s:%d", settings.api_host, settings.api_port)
     yield
@@ -96,12 +93,12 @@ async def health_check() -> HealthResponse:
     """Health check endpoint."""
     components = {}
 
-    # Check ChromaDB
+    # Check Supabase pgvector
     try:
         count = collection_count()
-        components["chromadb"] = f"ok ({count} artifacts)"
+        components["supabase_pgvector"] = f"ok ({count} artifacts)"
     except Exception as exc:
-        components["chromadb"] = f"error: {exc}"
+        components["supabase_pgvector"] = f"error: {exc}"
 
     # Check Groq client
     try:

@@ -52,7 +52,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     The pipeline:
     1. **Rewriter** — rewrites the query for semantic search & detects language
-    2. **Retriever + Grader** — fetches artifacts from ChromaDB, LLM-grades relevance
+    2. **Retriever + Grader** — fetches artifacts from Supabase pgvector, LLM-grades relevance
     3. **Generator** — synthesises a bilingual answer citing names, halls, and links
 
     If relevance is below 0.5 the rewriter is called again (up to 2 retries).

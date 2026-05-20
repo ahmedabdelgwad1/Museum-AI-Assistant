@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Indexing pipeline: Load the CSV, embed artifacts, and store in ChromaDB.
+Indexing pipeline: Load the CSV, embed artifacts, and store in Supabase pgvector.
 
 Run once (or when the dataset changes):
     python scripts/index_artifacts.py
@@ -20,7 +20,7 @@ load_dotenv()
 
 from app.config import settings
 from app.rag.embedder import embed_texts
-from app.rag.vectorstore import get_collection, add_documents, collection_count
+from app.rag.vectorstore import add_documents, collection_count
 from app.utils.helpers import clean_text, truncate_text, build_artifact_id
 
 logging.basicConfig(
@@ -112,7 +112,7 @@ def main() -> None:
 
     # Check existing indexed count
     existing = collection_count()
-    logger.info("Existing documents in ChromaDB: %d", existing)
+    logger.info("Existing documents in Supabase pgvector: %d", existing)
 
     all_ids: list[str] = []
     all_documents: list[str] = []
@@ -155,7 +155,7 @@ def main() -> None:
             pct,
         )
 
-    logger.info("Storing %d documents in ChromaDB...", len(all_ids))
+    logger.info("Storing %d documents in Supabase pgvector...", len(all_ids))
     add_documents(
         ids=all_ids,
         embeddings=all_embeddings,
@@ -166,10 +166,10 @@ def main() -> None:
     final_count = collection_count()
     logger.info("=" * 60)
     logger.info("Indexing complete!")
-    logger.info("Total artifacts in ChromaDB: %d", final_count)
+    logger.info("Total artifacts in Supabase pgvector: %d", final_count)
     logger.info("Embedding model: %s", settings.embedding_model)
-    logger.info("Collection name: %s", settings.chroma_collection_name)
-    logger.info("ChromaDB path: %s", settings.chroma_persist_dir)
+    logger.info("Supabase table: %s", settings.supabase_table)
+    logger.info("Supabase match function: %s", settings.supabase_function)
     logger.info("=" * 60)
 
 

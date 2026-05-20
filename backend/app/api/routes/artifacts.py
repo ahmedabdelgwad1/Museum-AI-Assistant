@@ -20,7 +20,7 @@ router = APIRouter(prefix="/artifacts", tags=["artifacts"])
 
 
 def _metadata_to_base(art_id: str, meta: dict) -> ArtifactBase:
-    """Convert a ChromaDB metadata dict to an ArtifactBase model."""
+    """Convert an artifact metadata dict to an ArtifactBase model."""
     return ArtifactBase(
         artifact_id=art_id,
         artifact_name_en=meta.get("artifact_name_en", ""),
@@ -39,7 +39,7 @@ def _metadata_to_base(art_id: str, meta: dict) -> ArtifactBase:
 
 
 def _metadata_to_detail(art_id: str, meta: dict) -> ArtifactDetail:
-    """Convert a ChromaDB metadata dict to an ArtifactDetail model."""
+    """Convert an artifact metadata dict to an ArtifactDetail model."""
     return ArtifactDetail(
         artifact_id=art_id,
         artifact_name_en=meta.get("artifact_name_en", ""),

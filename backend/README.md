@@ -16,7 +16,7 @@ A **Corrective RAG** chatbot powered by **LangGraph** for the **Bibliotheca Alex
 ## ✨ Features
 
 - 🔄 **LangGraph Corrective RAG** — 3-node pipeline: Query Rewriter → Retriever+Grader → Generator
-- 🔍 **Semantic Search** — Multilingual embeddings (Arabic + English) via ChromaDB
+- 🔍 **Semantic Search** — Multilingual embeddings (Arabic + English) via Supabase pgvector
 - 🎙️ **Voice Interface** — Groq Whisper STT → Corrective RAG → Edge TTS response
 - 🌐 **Bilingual** — Auto-detects language; responds as "Alex" (EN) or "إسكندر" (AR)
 - ⚡ **FastAPI** — Async API with full OpenAPI documentation
@@ -44,7 +44,7 @@ bibalex_museum_rag/
 │   │
 │   ├── rag/
 │   │   ├── embedder.py        # Multilingual embedding (sentence-transformers)
-│   │   ├── vectorstore.py     # ChromaDB operations
+│   │   ├── vectorstore.py     # Supabase pgvector operations
 │   │   └── retriever.py       # Semantic search
 │   │
 │   ├── voice/
@@ -64,7 +64,6 @@ bibalex_museum_rag/
 │
 ├── data/
 │   ├── bibalex_full_museum_data.csv
-│   ├── chroma_db/             # ChromaDB persistent store (auto-created)
 │   └── museum_general_info.json
 │
 └── scripts/
@@ -94,7 +93,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env and set your GROQ_API_KEY
+# Edit .env and set GROQ_API_KEY, SUPABASE_URL, and SUPABASE_KEY
 ```
 
 ### 4. Index the artifacts (run once)
@@ -112,8 +111,8 @@ After filtering: 97 valid artifact rows.
 Progress: 32/97 artifacts embedded (33%)
 Progress: 64/97 artifacts embedded (66%)
 Progress: 97/97 artifacts embedded (100%)
-Storing 97 documents in ChromaDB...
-Indexing complete! Total artifacts in ChromaDB: 97
+Storing 97 documents in Supabase pgvector...
+Indexing complete! Total artifacts in Supabase pgvector: 97
 ```
 
 ### 5. Run the API
@@ -222,8 +221,8 @@ curl http://localhost:8000/health
 | Component | Technology |
 |-----------|-----------|
 | LLM | Groq `llama-3.3-70b-versatile` |
-| Embeddings | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |
-| Vector Store | ChromaDB (local, persistent) |
+| Embeddings | `intfloat/multilingual-e5-base` |
+| Vector Store | Supabase Postgres + pgvector |
 | STT | Groq Whisper `whisper-large-v3` |
 | TTS | Edge TTS (`ar-EG-SalmaNeural` / `en-US-JennyNeural`) |
 | API | FastAPI + uvicorn |
@@ -246,7 +245,7 @@ User Query
      │
      ▼
 ┌──────────────────┐
-│ Retriever+Grader │  Node 2 — ChromaDB semantic search + LLM relevance grade
+│ Retriever+Grader │  Node 2 — Supabase pgvector semantic search + LLM relevance grade
 └────┬─────────────┘
      │
      │  relevance_score < 0.5
@@ -270,7 +269,7 @@ User Query
 | `original_query` | `str` | Raw user query — never modified |
 | `rewritten_query` | `str` | Keyword-optimised query from Node 1 |
 | `language` | `str` | `"ar"` or `"en"` — detected by rewriter |
-| `retrieved_docs` | `List[dict]` | Artifacts from ChromaDB |
+| `retrieved_docs` | `List[dict]` | Artifacts from semantic search |
 | `relevance_score` | `float` | 0.0–1.0 assigned by grader LLM |
 | `generation` | `str` | Final answer from Node 3 |
 | `rewrite_count` | `int` | Number of rewrites so far (max 2) |
@@ -295,9 +294,12 @@ python scripts/test_rag.py "ما هي القطع المكتشفة في سقار�
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GROQ_API_KEY` | **required** | Your Groq API key |
-| `CHROMA_PERSIST_DIR` | `./data/chroma_db` | ChromaDB storage path |
+| `SUPABASE_URL` | **required** | Supabase project URL |
+| `SUPABASE_KEY` | **required** | Supabase service role key for backend access |
+| `SUPABASE_TABLE` | `museum_artifacts` | Supabase table storing content, metadata, and embeddings |
+| `SUPABASE_FUNCTION` | `match_artifacts` | Supabase RPC used for vector similarity search |
 | `CSV_DATA_PATH` | `./data/bibalex_full_museum_data.csv` | Artifact dataset |
-| `EMBEDDING_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Embedding model |
+| `EMBEDDING_MODEL` | `intfloat/multilingual-e5-base` | Embedding model |
 | `TOP_K_RESULTS` | `5` | Default number of search results |
 | `MAX_REWRITE_ATTEMPTS` | `2` | Max query rewrites in the Corrective RAG loop |
 | `API_HOST` | `0.0.0.0` | API host |
