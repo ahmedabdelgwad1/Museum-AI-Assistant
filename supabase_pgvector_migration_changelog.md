@@ -278,3 +278,58 @@ npm run build
 ```
 
 - Result: both passed.
+
+---
+
+## 2026-05-20 — Clean Chat and Voice API Contracts
+
+### Summary
+
+The chat and voice frontend calls were cleaned so they use environment-based backend URLs and match the FastAPI request contracts.
+
+### Backend Changes
+
+- Updated `backend/app/models.py`
+  - `ChatRequest.conversation_history` now uses `Field(default_factory=list)`.
+  - `ChatRequest.language` defaults to `"ar"`.
+  - `ChatResponse.artifact_references` now uses `Field(default_factory=list)`.
+  - This avoids mutable default list issues while preserving the existing response contract.
+
+- Updated `backend/app/api/routes/voice.py`
+  - Accepts optional `language` in the voice `FormData`.
+  - Keeps transcript language detection as the primary signal.
+
+### Frontend Changes
+
+- Updated `forntent/src/hooks/useChat.ts`
+  - Removed hardcoded Hugging Face backend URL.
+  - Uses `NEXT_PUBLIC_API_URL` with local fallback `http://localhost:8000`.
+  - `/chat` sends JSON with `query`, `language`, and `conversation_history`.
+  - `/voice` sends `FormData` with `file`, `language`, and `conversation_history`.
+  - Does not set `Content-Type` manually for `FormData`.
+
+- Updated `forntent/src/lib/api.ts`
+  - Removed unused `artifact_context` payload from `sendChatMessage()`.
+  - `sendChatMessage()` now accepts `query`, `history`, and `locale`.
+  - `sendVoiceMessage()` now uses the FastAPI field name `file` instead of `audio`.
+  - `sendVoiceMessage()` now returns the backend JSON response instead of assuming a raw blob.
+
+- Updated `forntent/src/lib/ai/chat.ts`
+  - Removed hardcoded Hugging Face backend URL.
+  - Added optional `conversation_history` support.
+
+### Verification
+
+- Confirmed no remaining frontend references to:
+  - `ahmed3182004-museum-backend`
+  - `artifact_context`
+  - `formData.append("audio", ...)`
+
+- Ran:
+
+```bash
+python3 -m compileall backend/app backend/main.py
+npm run build
+```
+
+- Result: both passed.

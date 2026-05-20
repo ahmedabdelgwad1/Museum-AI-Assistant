@@ -127,25 +127,37 @@ export async function createArtifact(input: CreateArtifactInput) {
   return payload
 }
 
-export async function sendChatMessage(query: string, artifactContext?: object) {
-  try {
-    const res = await fetch(`${API_BASE}/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, artifact_context: artifactContext })
-    })
-    return await res.json()
-  } catch (e) {
-    return { response: "Failed to connect to AI server." }
+export async function sendChatMessage(query: string, history: any[] = [], locale: string = "ar") {
+  const res = await fetch(`${API_BASE}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query,
+      language: locale,
+      conversation_history: history,
+    }),
+  })
+
+  if (!res.ok) {
+    throw new Error(`تعذر الاتصال بالسيرفر. الكود: ${res.status}`)
   }
+
+  return await res.json()
 }
 
-export async function sendVoiceMessage(audioBlob: Blob) {
+export async function sendVoiceMessage(audioBlob: Blob, history: any[] = [], locale: string = "ar") {
   const formData = new FormData()
-  formData.append("audio", audioBlob, "recording.webm")
+  formData.append("file", audioBlob, "recording.webm")
+  formData.append("language", locale)
+  formData.append("conversation_history", JSON.stringify(history))
   const res = await fetch(`${API_BASE}/voice`, {
     method: "POST",
     body: formData
   })
-  return res.blob() // returns MP3
+
+  if (!res.ok) {
+    throw new Error(`تعذر الاتصال بالسيرفر. الكود: ${res.status}`)
+  }
+
+  return await res.json()
 }

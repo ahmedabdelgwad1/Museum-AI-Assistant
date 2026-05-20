@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { ChatMessage, AIResponse } from '@/types';
 import { getDictionary } from '@/lib/dictionaries';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export function useChat(artifact: any, locale: 'en' | 'ar') {
   const dict = getDictionary(locale);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -82,11 +84,11 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
       const historyToSend = messages
         .filter(m => m.content !== dict.ai.thinking && !m.content.includes('رسالة صوتية') && !m.content.includes('Voice message'))
         .map(m => ({ role: m.role, content: m.content }));
+      formData.append("language", locale);
       formData.append("conversation_history", JSON.stringify(historyToSend));
       
       setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
 
-      const API_URL = "https://ahmed3182004-museum-backend.hf.space";
       const response = await fetch(`${API_URL}/voice`, { 
         method: "POST", 
         body: formData 
@@ -153,7 +155,6 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
         .filter(m => m.content !== dict.ai.thinking && !m.content.includes('رسالة صوتية') && !m.content.includes('Voice message'))
         .map(m => ({ role: m.role, content: m.content }));
 
-      const API_URL = "https://ahmed3182004-museum-backend.hf.space";
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: {

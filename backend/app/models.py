@@ -61,11 +61,11 @@ class ArtifactListResponse(BaseModel):
 class ChatRequest(BaseModel):
     query: str = Field(..., description="User query in Arabic or English")
     language: Optional[str] = Field(
-        default=None,
+        default="ar",
         description="Language override ('ar' or 'en'). Auto-detected if not provided.",
     )
-    conversation_history: Optional[List[Dict[str, str]]] = Field(
-        default=None,
+    conversation_history: List[Dict[str, str]] = Field(
+        default_factory=list,
         description="Previous conversation turns for context",
     )
 
@@ -81,7 +81,7 @@ class ArtifactReference(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     language: str
-    artifact_references: List[ArtifactReference] = []
+    artifact_references: List[ArtifactReference] = Field(default_factory=list)
     pipeline: str = "corrective_rag"
     rewrite_count: int = 0
     audio_base64: Optional[str] = None

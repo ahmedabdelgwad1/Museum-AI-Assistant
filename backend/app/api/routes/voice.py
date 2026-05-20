@@ -55,6 +55,7 @@ from fastapi.responses import JSONResponse
 @router.post("", summary="Voice query — STT → Corrective RAG → TTS")
 async def voice_query(
     file: UploadFile = File(...),
+    language: str | None = Form(None),
     conversation_history: str = Form(None)
 ) -> JSONResponse:
     """
@@ -115,6 +116,8 @@ async def voice_query(
 
     # Detect language from the transcript itself (most reliable signal)
     detected_lang = detect_language(transcript)
+    if detected_lang not in {"ar", "en"} and language in {"ar", "en"}:
+        detected_lang = language
     logger.info("Detected language from transcript: %s", detected_lang)
 
     try:
