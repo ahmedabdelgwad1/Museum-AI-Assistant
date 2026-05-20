@@ -154,6 +154,28 @@ def delete_by_id(artifact_id: str) -> None:
     client.table(settings.supabase_table).delete().eq("id", artifact_id).execute()
 
 
+def update_metadata(artifact_id: str, fields: Dict[str, Any]) -> None:
+    """Patch specific metadata fields of an artifact without re-embedding.
+
+    Fetches the current metadata, merges the provided fields, then writes back.
+    The embedding and content columns are left untouched.
+    """
+    client = get_supabase_client()
+
+    # Fetch current metadata
+    current = get_by_id(artifact_id)
+    if current is None:
+        raise ValueError(f"Artifact '{artifact_id}' not found.")
+
+    meta = dict(current.get("metadata", {}))
+    # Merge only the provided (non-None) fields
+    for key, value in fields.items():
+        if value is not None:
+            meta[key] = value
+
+    client.table(settings.supabase_table).update({"metadata": meta}).eq("id", artifact_id).execute()
+
+
 def collection_count() -> int:
     """Return total number of documents in the Supabase table."""
     client = get_supabase_client()

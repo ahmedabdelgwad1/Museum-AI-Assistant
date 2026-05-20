@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from app.models import (
     ArtifactDetail,
     ArtifactCreateRequest,
+    ArtifactUpdateRequest,
     ArtifactBase,
     ArtifactListResponse,
     SearchResponse,
@@ -17,6 +18,7 @@ from app.rag.embedder import embed_query
 from app.rag.vectorstore import (
     add_documents,
     delete_by_id,
+    update_metadata,
     list_all,
     list_records,
     get_by_id,
@@ -215,6 +217,30 @@ async def search_artifacts(
         results=search_results,
         total_found=len(search_results),
     )
+
+
+@router.patch("/{artifact_id}", response_model=ArtifactDetail, summary="Patch artifact metadata")
+async def patch_artifact(artifact_id: str, request: ArtifactUpdateRequest) -> ArtifactDetail:
+    """Update selected metadata fields of an artifact without re-embedding."""
+    fields = {k: v for k, v in request.model_dump().items() if v is not None}
+    if not fields:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No fields provided to update.",
+        )
+    try:
+        update_metadata(artifact_id, fields)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Failed to patch artifact %s", artifact_id)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to update artifact: {exc}",
+        ) from exc
+
+    result = get_by_id(artifact_id)
+    return _metadata_to_detail(artifact_id, result["metadata"] if result else {})
 
 
 @router.get("/{artifact_id}", response_model=ArtifactDetail, summary="Get artifact details")

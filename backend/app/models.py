@@ -47,6 +47,17 @@ class ArtifactCreateRequest(BaseModel):
     image_url: Optional[str] = None
 
 
+class ArtifactUpdateRequest(BaseModel):
+    """All fields optional — only provided fields will be patched."""
+    artifact_name_en: Optional[str] = None
+    artifact_name_ar: Optional[str] = None
+    description_en: Optional[str] = None
+    description_ar: Optional[str] = None
+    section_name_en: Optional[str] = None
+    section_name_ar: Optional[str] = None
+    image_url: Optional[str] = None
+
+
 class ArtifactListResponse(BaseModel):
     total: int
     page: int
