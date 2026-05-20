@@ -246,27 +246,58 @@ export default function AdminArtifacts() {
         </div>
 
         {/* Pagination */}
-        <div className="border-t border-[var(--color-primary)]/20 px-6 py-4 bg-[var(--color-surface-container-low)]/50 flex justify-between items-center">
-          <span className={`${hFont(locale)} text-[var(--color-outline)] opacity-70 uppercase tracking-widest text-xs hidden sm:block`}>
+        <div className="border-t border-[var(--color-primary)]/20 px-6 py-4 bg-[var(--color-surface-container-low)]/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <span className={`${hFont(locale)} text-[var(--color-outline)] opacity-70 uppercase tracking-widest text-xs`}>
             {t.showing.replace("{start}", startItem.toString()).replace("{end}", endItem.toString()).replace("{total}", totalCount.toString())}
           </span>
-          <div className="flex gap-2">
-            <button 
+          <div className="flex gap-1 items-center flex-wrap justify-center">
+            {/* Prev */}
+            <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-1 border border-[var(--color-primary)]/30 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              className="p-1 px-2 border border-[var(--color-primary)]/30 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             >
-              {isAr ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+              {isAr ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
-            <span className="p-1 px-4 border border-[var(--color-primary)] text-[var(--color-background)] bg-[var(--color-primary)] transition-colors flex items-center justify-center">
-              <span className="font-[family-name:var(--font-headline-md)] text-sm">{page}</span>
-            </span>
-            <button 
+
+            {/* Page numbers */}
+            {(() => {
+              const pages: (number | "...")[] = [];
+              if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+              } else {
+                pages.push(1);
+                if (page > 3) pages.push("...");
+                for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+                if (page < totalPages - 2) pages.push("...");
+                pages.push(totalPages);
+              }
+              return pages.map((p, i) =>
+                p === "..." ? (
+                  <span key={`ellipsis-${i}`} className={`px-2 text-[var(--color-outline)] opacity-50 ${hFont(locale)} text-sm select-none`}>…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p as number)}
+                    className={`min-w-[36px] h-9 px-2 border text-sm transition-colors ${hFont(locale)} ${
+                      page === p
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[#171308]"
+                        : "border-[var(--color-primary)]/30 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              );
+            })()}
+
+            {/* Next */}
+            <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || totalPages === 0}
-              className="p-1 border border-[var(--color-primary)]/30 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              className="p-1 px-2 border border-[var(--color-primary)]/30 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             >
-              {isAr ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+              {isAr ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
             </button>
           </div>
         </div>
