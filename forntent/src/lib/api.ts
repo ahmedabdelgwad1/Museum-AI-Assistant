@@ -71,39 +71,13 @@ export type AdminArtifactRecord = {
 }
 
 export async function getAdminArtifacts(page = 1, pageSize = 100) {
-  const params = new URLSearchParams({
-    page: String(page),
-    page_size: String(pageSize),
-  })
-  try {
-    const res = await fetch(`${API_BASE}/artifacts/admin?${params.toString()}`, {
-      cache: "no-store",
-    })
-    const payload = await res.json().catch(() => null)
-    if (!res.ok) {
-      const detail = payload?.detail || "Failed to load admin artifacts."
-      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail))
-    }
-    return payload as { total: number; records: AdminArtifactRecord[] }
-  } catch (error) {
-    console.warn("Backend admin artifacts unavailable; falling back to Supabase client.", error)
-  }
-
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
-  let result: any = await supabase
+  const result = await supabase
     .from("museum_artifacts")
-    .select("id, content, metadata, created_at", { count: "exact" })
+    .select("id, content, metadata", { count: "exact" })
     .order("id", { ascending: true })
     .range(from, to)
-
-  if (result.error && String(result.error.message).includes("created_at")) {
-    result = await supabase
-      .from("museum_artifacts")
-      .select("id, content, metadata", { count: "exact" })
-      .order("id", { ascending: true })
-      .range(from, to)
-  }
 
   if (result.error) throw result.error
 
