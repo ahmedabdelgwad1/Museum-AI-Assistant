@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import { Building2, Clock, MoreHorizontal } from "lucide-react";
-import { getDictionary, hFont, bodyFont, dir } from "@/lib/dictionaries";
+import { hFont, bodyFont, dir } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
 
 import { createClient } from "@/lib/supabase/client";
@@ -34,6 +34,46 @@ const L = {
 
 const DEFAULT_IMAGE = "https://lh3.googleusercontent.com/aida-public/AB6AXuBA6FlkSGl2M4zEEA3OinZ07qJmwBvRI3Hn1vCCQkuHrizJB7RXQSHITEhDZtz-cJYxOTFB2JLhP_LrTleyttObKZ6KrRxTraIylhVPE2Ck8npsNHYsErkYKZcNOTIioWhZdMH8oQ6n0MSUI3jYYOuaZPdhM_3fk-TpP-nVpaO3-RBlJkM7oq_36irpT5Ni1XBWhukCz4gqoCaYrwKHh2GeDktpARciMtqUeeuvozJUshuODSg2nvY0DC7m0tYG9pJIR_C2EMjpxlU";
 
+type ArtifactMetadata = {
+  artifact_name_en?: string;
+  artifact_name_ar?: string;
+  section_name_en?: string;
+  section_name_ar?: string;
+  hall?: string;
+  image_url?: string;
+};
+
+type ArtifactStatsRow = {
+  id?: string | number;
+  metadata: ArtifactMetadata | string | null;
+  created_at: string | null;
+};
+
+type SectionChartItem = {
+  name: string;
+  count: number;
+  height: string;
+};
+
+type RecentActivityItem = {
+  id: string | number;
+  title: string;
+  desc: string;
+  time: string;
+  image: string;
+};
+
+function readMetadata(metadata: ArtifactStatsRow["metadata"]): ArtifactMetadata {
+  if (!metadata) return {};
+  if (typeof metadata !== "string") return metadata;
+
+  try {
+    return JSON.parse(metadata) as ArtifactMetadata;
+  } catch {
+    return {};
+  }
+}
+
 export default function AdminDashboard() {
   const { locale } = useAdminLocale();
   const isAr = locale === "ar";
@@ -41,12 +81,13 @@ export default function AdminDashboard() {
 
   const [totalArtifacts, setTotalArtifacts] = useState<number>(0);
   const [recentCount, setRecentCount] = useState<number>(0);
-  const [sectionsData, setSectionsData] = useState<{name: string, count: number, height: string}[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const supabase = createClient();
+  const [sectionsData, setSectionsData] = useState<SectionChartItem[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
 
   useEffect(() => {
     async function fetchStats() {
+      const supabase = createClient();
+
       // 1. Total Artifacts & Sections Distribution
       const { count, data } = await supabase
         .from('museum_artifacts')
@@ -62,9 +103,8 @@ export default function AdminDashboard() {
         let monthCount = 0;
         const now = new Date();
         
-        data.forEach(item => {
-           // Parse metadata
-           const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+        (data as ArtifactStatsRow[]).forEach(item => {
+           const meta = readMetadata(item.metadata);
            const secName = isAr ? meta?.section_name_ar : meta?.section_name_en;
            if (secName) {
               sectionCounts[secName] = (sectionCounts[secName] || 0) + 1;
@@ -104,16 +144,16 @@ export default function AdminDashboard() {
         .limit(3);
 
       if (recentData) {
-        const formattedActivity = recentData.map(item => {
-          const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+        const formattedActivity = (recentData as ArtifactStatsRow[]).map(item => {
+          const meta = readMetadata(item.metadata);
           const name = isAr ? meta?.artifact_name_ar : meta?.artifact_name_en;
           const hall = meta?.hall || (isAr ? "القاعة الرئيسية" : "Main Hall");
           
           return {
-            id: item.id,
+            id: item.id ?? item.created_at ?? name ?? crypto.randomUUID(),
             title: name || (isAr ? "قطعة غير معروفة" : "Unknown Artifact"),
             desc: isAr ? `تمت الإضافة إلى ${hall}` : `Added to ${hall}`,
-            time: new Date(item.created_at).toLocaleDateString(isAr ? 'ar-EG' : 'en-US'),
+            time: item.created_at ? new Date(item.created_at).toLocaleDateString(isAr ? 'ar-EG' : 'en-US') : "N/A",
             image: meta?.image_url || DEFAULT_IMAGE
           };
         });

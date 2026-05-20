@@ -2,7 +2,7 @@
 import { Eye } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getDictionary, hFont, dir } from "@/lib/dictionaries";
+import { hFont, dir } from "@/lib/dictionaries";
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";

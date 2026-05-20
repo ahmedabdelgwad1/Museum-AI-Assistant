@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-import { getDictionary, hFont, bodyFont, dir } from "@/lib/dictionaries";
+import { hFont, bodyFont, dir } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -20,7 +20,10 @@ const L = {
     colActions: "Actions",
     showing: "Showing {start} to {end} of {total} Entries",
     loading: "Loading artifacts...",
-    noData: "No artifacts found."
+    noData: "No artifacts found.",
+    deleteConfirm: "Delete this artifact from Supabase?",
+    deleteError: "Could not delete artifact. Please check permissions.",
+    editSoon: "Editing will be connected next."
   },
   ar: {
     label: "نظام السجل",
@@ -34,29 +37,67 @@ const L = {
     colActions: "الإجراءات",
     showing: "عرض {start} إلى {end} من {total} قطعة",
     loading: "جاري تحميل القطع...",
-    noData: "لا توجد قطع أثرية."
+    noData: "لا توجد قطع أثرية.",
+    deleteConfirm: "هل تريد حذف هذه القطعة من Supabase؟",
+    deleteError: "تعذر حذف القطعة. راجع صلاحيات قاعدة البيانات.",
+    editSoon: "سيتم ربط التعديل لاحقاً."
   },
 };
 
 const DEFAULT_IMAGE = "https://lh3.googleusercontent.com/aida-public/AB6AXuBA6FlkSGl2M4zEEA3OinZ07qJmwBvRI3Hn1vCCQkuHrizJB7RXQSHITEhDZtz-cJYxOTFB2JLhP_LrTleyttObKZ6KrRxTraIylhVPE2Ck8npsNHYsErkYKZcNOTIioWhZdMH8oQ6n0MSUI3jYYOuaZPdhM_3fk-TpP-nVpaO3-RBlJkM7oq_36irpT5Ni1XBWhukCz4gqoCaYrwKHh2GeDktpARciMtqUeeuvozJUshuODSg2nvY0DC7m0tYG9pJIR_C2EMjpxlU";
+
+type ArtifactMetadata = {
+  artifact_name_en?: string;
+  artifact_name_ar?: string;
+  section_name_en?: string;
+  section_name_ar?: string;
+  image_url?: string;
+};
+
+type ArtifactRow = {
+  id: string | number;
+  metadata: ArtifactMetadata | string | null;
+  created_at: string | null;
+};
+
+type ArtifactTableItem = {
+  id: string | number;
+  nameEn: string;
+  nameAr: string;
+  sectionEn: string;
+  sectionAr: string;
+  date: string;
+  image: string;
+};
+
+function readMetadata(metadata: ArtifactRow["metadata"]): ArtifactMetadata {
+  if (!metadata) return {};
+  if (typeof metadata !== "string") return metadata;
+
+  try {
+    return JSON.parse(metadata) as ArtifactMetadata;
+  } catch {
+    return {};
+  }
+}
 
 export default function AdminArtifacts() {
   const { locale } = useAdminLocale();
   const isAr = locale === "ar";
   const t = L[isAr ? "ar" : "en"];
 
-  const [artifacts, setArtifacts] = useState<any[]>([]);
+  const [artifacts, setArtifacts] = useState<ArtifactTableItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
   
   // Pagination
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  const supabase = createClient();
-
   useEffect(() => {
     async function fetchArtifacts() {
+      const supabase = createClient();
       setLoading(true);
       
       const { count } = await supabase
@@ -75,8 +116,8 @@ export default function AdminArtifacts() {
         .order('id', { ascending: true });
         
       if (data) {
-        const formatted = data.map(row => {
-          const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata;
+        const formatted = (data as ArtifactRow[]).map(row => {
+          const meta = readMetadata(row.metadata);
           return {
             id: row.id,
             nameEn: meta?.artifact_name_en || "Unknown Artifact",
@@ -97,6 +138,32 @@ export default function AdminArtifacts() {
   const totalPages = Math.ceil(totalCount / limit);
   const startItem = totalCount === 0 ? 0 : (page - 1) * limit + 1;
   const endItem = Math.min(page * limit, totalCount);
+
+  const handleDelete = async (id: string | number) => {
+    if (!window.confirm(t.deleteConfirm)) return;
+
+    setDeletingId(id);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("museum_artifacts")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert(t.deleteError);
+      setDeletingId(null);
+      return;
+    }
+
+    const nextArtifacts = artifacts.filter((item) => item.id !== id);
+    setArtifacts(nextArtifacts);
+    setTotalCount((current) => Math.max(0, current - 1));
+    setDeletingId(null);
+
+    if (nextArtifacts.length === 0 && page > 1) {
+      setPage((current) => current - 1);
+    }
+  };
 
   return (
     <div dir={dir(locale)} className="pt-10 px-6 md:px-12 pb-24 max-w-[1280px] mx-auto w-full relative">
@@ -167,10 +234,19 @@ export default function AdminArtifacts() {
                     <td className={`p-5 text-[var(--color-outline)] ${hFont(locale)} text-sm tracking-wider`}>{item.date}</td>
                     <td className="p-5 text-right">
                       <div className="flex justify-end gap-3 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <button aria-label="Edit" className="p-2 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors">
+                        <button
+                          aria-label="Edit"
+                          onClick={() => alert(t.editSoon)}
+                          className="p-2 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors"
+                        >
                           <Edit size={18} />
                         </button>
-                        <button aria-label="Delete" className="p-2 hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 rounded-full transition-colors">
+                        <button
+                          aria-label="Delete"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deletingId === item.id}
+                          className="p-2 hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
                           <Trash2 size={18} />
                         </button>
                       </div>
@@ -211,4 +287,3 @@ export default function AdminArtifacts() {
     </div>
   );
 }
-

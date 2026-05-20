@@ -16,7 +16,6 @@ export default function AdminSettings() {
     ? "font-[family-name:var(--font-arabic)]"
     : "font-[family-name:var(--font-body-md)]";
 
-  const supabase = createClient();
   const router = useRouter();
 
   const [userEmail, setUserEmail] = useState("");
@@ -25,6 +24,7 @@ export default function AdminSettings() {
 
   useEffect(() => {
     async function fetchUser() {
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserEmail(user.email || "");
@@ -37,6 +37,7 @@ export default function AdminSettings() {
   }, [isRTL]);
 
   const handleLogout = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/admin/login");
   };

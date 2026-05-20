@@ -2,9 +2,33 @@
 import { Info, PenTool, Camera, Loader2 } from "lucide-react";
 import { getDictionary } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+
+type ArtifactMetadata = {
+  section_number?: string | number;
+  section_name_en?: string;
+  section_name_ar?: string;
+};
+
+type SectionOption = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  count: number;
+};
+
+function readMetadata(metadata: ArtifactMetadata | string | null): ArtifactMetadata {
+  if (!metadata) return {};
+  if (typeof metadata !== "string") return metadata;
+
+  try {
+    return JSON.parse(metadata) as ArtifactMetadata;
+  } catch {
+    return {};
+  }
+}
 
 export default function AdminNewArtifact() {
   const { locale } = useAdminLocale();
@@ -15,9 +39,9 @@ export default function AdminNewArtifact() {
     ? "font-[family-name:var(--font-arabic)]"
     : "font-[family-name:var(--font-headline-md)]";
 
-  const supabase = createClient();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [sections, setSections] = useState<SectionOption[]>([]);
 
   // Today's date for registry
   const today = new Date().toLocaleDateString((locale as string) === "ar" ? "ar-EG" : "en-GB", {
@@ -25,6 +49,45 @@ export default function AdminNewArtifact() {
     month: "long",
     year: "numeric",
   });
+
+  useEffect(() => {
+    async function fetchSections() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("museum_artifacts")
+        .select("metadata");
+
+      const sectionMap = new Map<string, SectionOption>();
+
+      data?.forEach((row) => {
+        const meta = readMetadata(row.metadata);
+        const sectionId = meta.section_number?.toString().trim();
+
+        if (!sectionId || sectionId.toLowerCase() === "nan") return;
+
+        const existing = sectionMap.get(sectionId);
+        if (existing) {
+          existing.count += 1;
+          return;
+        }
+
+        sectionMap.set(sectionId, {
+          id: sectionId,
+          nameEn: meta.section_name_en || `Section ${sectionId}`,
+          nameAr: meta.section_name_ar || `قسم ${sectionId}`,
+          count: 1,
+        });
+      });
+
+      setSections(
+        Array.from(sectionMap.values()).sort((a, b) =>
+          a.id.localeCompare(b.id, undefined, { numeric: true })
+        )
+      );
+    }
+
+    fetchSections();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,6 +97,8 @@ export default function AdminNewArtifact() {
     const category = formData.get("category") as string;
     const hall = formData.get("hall") as string;
     const desc = formData.get("description") as string;
+    const imageUrl = formData.get("image_url") as string;
+    const selectedSection = sections.find((section) => section.id === category);
     
     // Fallback image url
     const DEFAULT_IMAGE = "https://lh3.googleusercontent.com/aida-public/AB6AXuBA6FlkSGl2M4zEEA3OinZ07qJmwBvRI3Hn1vCCQkuHrizJB7RXQSHITEhDZtz-cJYxOTFB2JLhP_LrTleyttObKZ6KrRxTraIylhVPE2Ck8npsNHYsErkYKZcNOTIioWhZdMH8oQ6n0MSUI3jYYOuaZPdhM_3fk-TpP-nVpaO3-RBlJkM7oq_36irpT5Ni1XBWhukCz4gqoCaYrwKHh2GeDktpARciMtqUeeuvozJUshuODSg2nvY0DC7m0tYG9pJIR_C2EMjpxlU";
@@ -41,12 +106,14 @@ export default function AdminNewArtifact() {
     const metadata = {
       artifact_name_en: name,
       artifact_name_ar: name, 
-      section_name_en: category || "Unknown",
-      section_name_ar: category || "Unknown",
+      section_number: selectedSection?.id || category || "",
+      section_name_en: selectedSection?.nameEn || category || "Unknown",
+      section_name_ar: selectedSection?.nameAr || category || "Unknown",
       hall,
-      image_url: DEFAULT_IMAGE
+      image_url: imageUrl?.trim() || DEFAULT_IMAGE
     };
 
+    const supabase = createClient();
     const { error } = await supabase.from('museum_artifacts').insert([
       {
         content: desc || "No description provided.",
@@ -134,10 +201,20 @@ export default function AdminNewArtifact() {
                   className={`w-full bg-transparent border-0 border-b border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-[var(--color-on-surface)] text-lg focus:outline-none ${isRTL ? "font-[family-name:var(--font-arabic)]" : "font-[family-name:var(--font-body-lg)]"}`}
                 >
                   <option value="" className="bg-[#1a1825]">{t.categoryDefault}</option>
-                  <option value="sculpture" className="bg-[#1a1825]">{t.cat1}</option>
-                  <option value="jewelry" className="bg-[#1a1825]">{t.cat2}</option>
-                  <option value="manuscript" className="bg-[#1a1825]">{t.cat3}</option>
-                  <option value="pottery" className="bg-[#1a1825]">{t.cat4}</option>
+                  {sections.length > 0 ? (
+                    sections.map((section) => (
+                      <option key={section.id} value={section.id} className="bg-[#1a1825]">
+                        {isRTL ? section.nameAr : section.nameEn} ({section.count})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="sculpture" className="bg-[#1a1825]">{t.cat1}</option>
+                      <option value="jewelry" className="bg-[#1a1825]">{t.cat2}</option>
+                      <option value="manuscript" className="bg-[#1a1825]">{t.cat3}</option>
+                      <option value="pottery" className="bg-[#1a1825]">{t.cat4}</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -206,6 +283,23 @@ export default function AdminNewArtifact() {
             <p className={`${isRTL ? "font-[family-name:var(--font-arabic)] text-sm" : "font-[family-name:var(--font-body-md)] text-sm"} text-[var(--color-on-surface-variant)] mb-5`}>
               {t.mediaHint}
             </p>
+
+            <div className="relative group mb-5">
+              <label
+                htmlFor="image_url"
+                className={`${headingClass} block text-[var(--color-primary)] mb-2 opacity-80 group-focus-within:opacity-100 transition-opacity uppercase tracking-wider text-xs`}
+              >
+                {isRTL ? "رابط الصورة" : "Image URL"}
+              </label>
+              <input
+                type="url"
+                id="image_url"
+                name="image_url"
+                dir="ltr"
+                placeholder="https://..."
+                className="w-full bg-transparent border-0 border-b border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-[var(--color-on-surface)] text-sm placeholder:text-[var(--color-outline-variant)] focus:outline-none font-[family-name:var(--font-body-md)]"
+              />
+            </div>
 
             {/* Dropzone */}
             <div className="flex-1 min-h-[220px] border-2 border-dashed border-[var(--color-primary)]/40 hover:border-[var(--color-primary)] transition-colors bg-[var(--color-surface-container-lowest)]/30 flex flex-col items-center justify-center p-6 text-center cursor-pointer group">
