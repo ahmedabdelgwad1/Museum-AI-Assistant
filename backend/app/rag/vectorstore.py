@@ -99,23 +99,36 @@ def add_documents(
     embeddings: List[List[float]],
     documents: List[str],
     metadatas: List[Dict[str, Any]],
-) -> None:
-    """Upsert embedded artifacts into the Supabase table."""
+) -> List[str]:
+    """Upsert embedded artifacts into the Supabase table and return assigned IDs."""
     client = get_supabase_client()
-    records = [
-        {
-            "id": artifact_id,
+    records = []
+    for artifact_id, document, metadata, embedding in zip(
+        ids, documents, metadatas, embeddings
+    ):
+        record = {
             "content": document,
             "metadata": metadata,
             "embedding": embedding,
         }
-        for artifact_id, document, metadata, embedding in zip(
-            ids, documents, metadatas, embeddings
-        )
-    ]
+        # If ID is a number, we are updating an existing row
+        try:
+            record["id"] = int(artifact_id)
+        except (ValueError, TypeError):
+            pass  # New row, let Supabase auto-increment
+
+        records.append(record)
+
     if not records:
-        return
-    client.table(settings.supabase_table).upsert(records).execute()
+        return []
+        
+    response = client.table(settings.supabase_table).upsert(records).execute()
+    
+    returned_ids = []
+    if response.data:
+        for row in response.data:
+            returned_ids.append(str(row.get("id")))
+    return returned_ids
 
 
 def get_by_id(artifact_id: str) -> Optional[Dict[str, Any]]:
@@ -149,8 +162,25 @@ def get_by_id(artifact_id: str) -> Optional[Dict[str, Any]]:
 
 
 def delete_by_id(artifact_id: str) -> None:
-    """Delete a single artifact by its Supabase row ID."""
+    """Delete a single artifact by its Supabase row ID and its associated image."""
     client = get_supabase_client()
+    
+    # First, fetch the artifact to get its image_url
+    artifact = get_by_id(artifact_id)
+    if artifact:
+        metadata = artifact.get("metadata", {})
+        image_url = metadata.get("image_url")
+        if image_url and "supabase.co" in image_url and "artifact-images" in image_url:
+            try:
+                from urllib.parse import urlparse
+                path = urlparse(image_url).path
+                filename = path.split("/")[-1]
+                if filename:
+                    client.storage.from_("artifact-images").remove([filename])
+            except Exception as e:
+                logger.error("Failed to delete image from Supabase Storage: %s", e)
+
+    # Finally, delete the row from the database
     client.table(settings.supabase_table).delete().eq("id", artifact_id).execute()
 
 

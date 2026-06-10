@@ -13,6 +13,10 @@ from app.api.middleware import RequestLoggingMiddleware, setup_cors
 from app.api.routes.chat import router as chat_router
 from app.api.routes.voice import router as voice_router
 from app.api.routes.artifacts import router as artifacts_router
+from app.api.routes.chat_stream import router as chat_stream_router
+from slowapi.errors import RateLimitExceeded
+from app.api.rate_limit import limiter, rate_limit_exceeded_handler
+
 from app.models import HealthResponse
 from app.rag.vectorstore import collection_count
 
@@ -74,14 +78,20 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Middleware
+# Middleware & Rate Limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
 app.add_middleware(RequestLoggingMiddleware)
 setup_cors(app, settings.cors_origins)
 
 # Routers
 app.include_router(chat_router)
+app.include_router(chat_stream_router)
 app.include_router(voice_router)
 app.include_router(artifacts_router)
+
+
 
 
 # ---------------------------------------------------------------------------

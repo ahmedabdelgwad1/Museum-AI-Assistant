@@ -6,7 +6,7 @@ export default function AdminLayout({
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
       {/* Main content area */}
-      <main className="flex-grow">
+      <main className="grow">
         {children}
       </main>
     </div>

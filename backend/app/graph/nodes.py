@@ -45,7 +45,7 @@ def _get_clients() -> list[Groq]:
     return _groq_clients
 
 
-def _llm_call(messages: list[dict], max_tokens: int = 512, temperature: float = 0.2) -> str:
+def _llm_call(messages: list[dict], max_tokens: int = 512, temperature: float = 0.2, model: str = None, response_format: dict = None) -> str:
     """
     Thin wrapper around the Groq chat completions API with automatic
     API key rotation on RateLimitError (HTTP 429).
@@ -56,17 +56,23 @@ def _llm_call(messages: list[dict], max_tokens: int = 512, temperature: float = 
 
     clients = _get_clients()
     num_keys = len(clients)
+    
+    use_model = model or settings.llm_model
 
     for attempt in range(num_keys):
         idx = (_current_key_index + attempt) % num_keys
         client = clients[idx]
         try:
-            completion = client.chat.completions.create(
-                model=settings.llm_model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
+            kwargs = {
+                "model": use_model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            if response_format:
+                kwargs["response_format"] = response_format
+                
+            completion = client.chat.completions.create(**kwargs)
             _current_key_index = idx  # remember last working key
             return completion.choices[0].message.content or ""
         except RateLimitError as exc:
@@ -298,3 +304,93 @@ def generate_answer(state: GraphState) -> GraphState:
         )
 
     return {**state, "generation": answer}
+
+
+# ---------------------------------------------------------------------------
+# Streaming Generator — used by /chat/stream (NOT part of the graph)
+# ---------------------------------------------------------------------------
+
+
+def generate_answer_stream(state: GraphState):
+    """
+    Streaming variant of generate_answer.
+
+    Identical message construction, but calls Groq with stream=True and
+    yields raw token strings one-by-one.  The caller is responsible for
+    wrapping tokens in SSE format and accumulating the full text for TTS.
+
+    Args:
+        state: A fully-populated GraphState (output of retrieve_and_grade).
+
+    Yields:
+        str — each token delta from the Groq stream (may be empty string).
+    """
+    from groq import RateLimitError
+
+    lang = state.get("language", "en")
+    question = state["original_query"]
+    docs = state.get("retrieved_docs", [])
+    score = state.get("relevance_score", 0.0)
+    rewrites = state.get("rewrite_count", 0)
+    history = state.get("conversation_history") or []
+
+    logger.info(
+        "StreamGenerator | lang=%s | relevance=%.2f | rewrites=%d | docs=%d | history=%d turns",
+        lang, score, rewrites, len(docs), len(history),
+    )
+
+    low_confidence = score < settings.relevance_threshold and rewrites >= settings.max_rewrite_attempts
+
+    system_prompt = get_system_prompt(lang, low_confidence=low_confidence)
+    context = _build_artifact_context(docs)
+    user_msg = get_context_template(lang).format(context=context, question=question)
+
+    messages: list[dict] = [{"role": "system", "content": system_prompt}]
+
+    valid_roles = {"user", "assistant", "ai"}
+    for turn in history[-6:]:
+        role = turn.get("role", "")
+        content = turn.get("content", "")
+        if role == "ai":
+            role = "assistant"
+        if role in valid_roles and content:
+            messages.append({"role": role, "content": content})
+
+    messages.append({"role": "user", "content": user_msg})
+
+    clients = _get_clients()
+    global _current_key_index
+    num_keys = len(clients)
+
+    for attempt in range(num_keys):
+        idx = (_current_key_index + attempt) % num_keys
+        client = clients[idx]
+        try:
+            stream = client.chat.completions.create(
+                model=settings.llm_model,
+                messages=messages,
+                temperature=0.4,
+                max_tokens=1200,
+                stream=True,
+            )
+            _current_key_index = idx
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                yield delta
+            return
+        except RateLimitError as exc:
+            logger.warning(
+                "Stream rate limit on key #%d (%s). Trying next key...", idx, str(exc)[:80]
+            )
+            _current_key_index = (idx + 1) % num_keys
+        except Exception as exc:
+            logger.error("Stream LLM call failed on key #%d: %s", idx, exc)
+            raise
+
+    # All keys exhausted — yield an error message
+    error_msg = (
+        "عذرًا، النظام مشغول حالياً. يرجى المحاولة مرة أخرى بعد لحظات."
+        if lang == "ar"
+        else "Sorry, the system is busy. Please try again in a moment."
+    )
+    yield error_msg

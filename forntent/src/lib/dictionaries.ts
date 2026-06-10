@@ -17,9 +17,9 @@ export const rtl = (locale: string) => locale === "ar";
 export const dir = (locale: string) => (locale === "ar" ? "rtl" : "ltr");
 export const hFont = (locale: string) =>
   locale === "ar"
-    ? "font-[family-name:var(--font-arabic)]"
-    : "font-[family-name:var(--font-headline-md)]";
+    ? "font-(family-name:--font-almarai)"
+    : "font-(family-name:--font-headline-md)";
 export const bodyFont = (locale: string) =>
   locale === "ar"
-    ? "font-[family-name:var(--font-arabic)]"
-    : "font-[family-name:var(--font-body-md)]";
+    ? "font-(family-name:--font-almarai)"
+    : "font-(family-name:--font-body-md)";

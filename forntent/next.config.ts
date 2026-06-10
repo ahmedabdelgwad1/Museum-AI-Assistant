@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+
+  // ✅ تحسين الأداء - تقليل استهلاك CPU
+  typescript: {
+    // تعطيل type checking أثناء الـ build (اعمله منفصل بـ tsc)
+    ignoreBuildErrors: false,
+  },
+  
+  // تقليل الـ source maps في الـ development لتوفير memory
+  productionBrowserSourceMaps: false,
 };
 
 export default nextConfig;

@@ -88,7 +88,9 @@ async def voice_query(
     # Step 1 — Speech-to-Text
     try:
         transcript = await transcribe_audio(
-            audio_bytes, filename=file.filename or "audio.wav"
+            audio_bytes,
+            filename=file.filename or "audio.wav",
+            language=language,
         )
     except Exception as exc:
         logger.exception("STT failed: %s", exc)

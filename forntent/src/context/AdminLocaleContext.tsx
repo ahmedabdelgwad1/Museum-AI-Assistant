@@ -14,20 +14,25 @@ const AdminLocaleContext = createContext<AdminLocaleContextType>({
 });
 
 export function AdminLocaleProvider({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
   const [locale, setLocaleState] = useState<Locale>("en");
 
-  // Read from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("admin-locale") as Locale | null;
+    const saved = window.localStorage.getItem("admin-locale") as Locale | null;
     if (saved === "ar" || saved === "en") {
       setLocaleState(saved);
     }
+    setMounted(true);
   }, []);
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);
-    localStorage.setItem("admin-locale", newLocale);
+    window.localStorage.setItem("admin-locale", newLocale);
   };
+
+  if (!mounted) {
+    return null; // Prevents hydration mismatch
+  }
 
   return (
     <AdminLocaleContext.Provider value={{ locale, setLocale }}>

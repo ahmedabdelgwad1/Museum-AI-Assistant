@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { Cinzel, Cormorant_Garamond, Noto_Naskh_Arabic } from "next/font/google";
+import { Inter, Almarai } from "next/font/google";
 import "./globals.css";
 
-const cinzel = Cinzel({ subsets: ["latin"], variable: "--font-cinzel" });
-const cormorant = Cormorant_Garamond({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-cormorant" });
-const notoNaskh = Noto_Naskh_Arabic({ subsets: ["arabic"], weight: ["400", "500", "700"], variable: "--font-noto-naskh" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const almarai = Almarai({ subsets: ["arabic"], weight: ["300", "400", "700", "800"], variable: "--font-almarai" });
 
 export const metadata: Metadata = {
   title: "Bibliotheca Alexandrina - Antiquities Museum",
@@ -17,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html suppressHydrationWarning className={`${cinzel.variable} ${cormorant.variable} ${notoNaskh.variable}`}>
+    <html suppressHydrationWarning className={`${inter.variable} ${almarai.variable}`}>
       <body>{children}</body>
     </html>
   );

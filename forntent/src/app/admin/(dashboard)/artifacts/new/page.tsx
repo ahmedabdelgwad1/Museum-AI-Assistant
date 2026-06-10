@@ -4,7 +4,7 @@ import { getDictionary } from "@/lib/dictionaries";
 import { useAdminLocale } from "@/context/AdminLocaleContext";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createArtifact, getAdminArtifacts, uploadImage } from "@/lib/api";
+import { createArtifact, getAdminArtifacts, uploadImage, translateBatch } from "@/lib/api";
 
 type ArtifactMetadata = {
   section_number?: string | number;
@@ -34,13 +34,28 @@ export default function AdminNewArtifact() {
   const { locale } = useAdminLocale();
   const t = getDictionary(locale as "en" | "ar").admin.new;
   const isRTL = locale === "ar";
-  const arabicClass = isRTL ? "font-[family-name:var(--font-arabic)]" : "";
+  const arabicClass = isRTL ? "font-(family-name:--font-almarai)" : "";
   const headingClass = isRTL
-    ? "font-[family-name:var(--font-arabic)]"
-    : "font-[family-name:var(--font-headline-md)]";
+    ? "font-(family-name:--font-almarai)"
+    : "font-(family-name:--font-headline-md)";
 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  
+  // Controlled fields for bi-directional translation
+  const [nameAr, setNameAr] = useState("");
+  const [nameEn, setNameEn] = useState("");
+  const [descAr, setDescAr] = useState("");
+  const [descEn, setDescEn] = useState("");
+  
+  // Track last edited language per field to enable smart overwriting
+  const [lastEdited, setLastEdited] = useState<{name: "ar"|"en"|null, desc: "ar"|"en"|null}>({
+    name: null,
+    desc: null
+  });
+  
+  // Translation state
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -111,14 +126,50 @@ export default function AdminNewArtifact() {
     }
   };
 
+  const handleAutoFill = async () => {
+    const fieldsToTranslate = [];
+    
+    // Smart Overwrite Logic for Name
+    if (nameAr && !nameEn) fieldsToTranslate.push({ field_id: "nameEn", source_text: nameAr, target_lang: "en" as const });
+    else if (!nameAr && nameEn) fieldsToTranslate.push({ field_id: "nameAr", source_text: nameEn, target_lang: "ar" as const });
+    else if (nameAr && nameEn && lastEdited.name) {
+      if (lastEdited.name === "ar") fieldsToTranslate.push({ field_id: "nameEn", source_text: nameAr, target_lang: "en" as const });
+      else fieldsToTranslate.push({ field_id: "nameAr", source_text: nameEn, target_lang: "ar" as const });
+    }
+
+    // Smart Overwrite Logic for Description
+    if (descAr && !descEn) fieldsToTranslate.push({ field_id: "descEn", source_text: descAr, target_lang: "en" as const });
+    else if (!descAr && descEn) fieldsToTranslate.push({ field_id: "descAr", source_text: descEn, target_lang: "ar" as const });
+    else if (descAr && descEn && lastEdited.desc) {
+      if (lastEdited.desc === "ar") fieldsToTranslate.push({ field_id: "descEn", source_text: descAr, target_lang: "en" as const });
+      else fieldsToTranslate.push({ field_id: "descAr", source_text: descEn, target_lang: "ar" as const });
+    }
+
+    if (fieldsToTranslate.length === 0) {
+      alert(isRTL ? "جميع الحقول محدثة." : "All fields are up to date.");
+      return;
+    }
+
+    setIsAutoFilling(true);
+    try {
+      const translations = await translateBatch(fieldsToTranslate);
+      if (translations.nameAr) setNameAr(translations.nameAr);
+      if (translations.nameEn) setNameEn(translations.nameEn);
+      if (translations.descAr) setDescAr(translations.descAr);
+      if (translations.descEn) setDescEn(translations.descEn);
+    } catch (err) {
+      alert("Auto-fill failed. Please try again.");
+    } finally {
+      setIsAutoFilling(false);
+    }
+  };
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     const formData = new FormData(e.currentTarget);
-    const name = formData.get("artifact_name") as string;
     const category = formData.get("category") as string;
     const hall = formData.get("hall") as string;
-    const desc = formData.get("description") as string;
     const imageUrl = (formData.get("image_url") as string) || uploadedUrl;
     const selectedSection = sections.find((section) => section.id === category);
     
@@ -127,16 +178,16 @@ export default function AdminNewArtifact() {
 
     try {
       await createArtifact({
-      artifact_name_en: name,
-      artifact_name_ar: name, 
-        description_en: desc || "No description provided.",
-        description_ar: desc || "No description provided.",
-      section_number: selectedSection?.id || category || "",
-      section_name_en: selectedSection?.nameEn || category || "Unknown",
-      section_name_ar: selectedSection?.nameAr || category || "Unknown",
+        artifact_name_en: nameEn || "Unknown",
+        artifact_name_ar: nameAr || "Unknown", 
+        description_en: descEn || "No description provided.",
+        description_ar: descAr || "No description provided.",
+        section_number: selectedSection?.id || category || "",
+        section_name_en: selectedSection?.nameEn || category || "Unknown",
+        section_name_ar: selectedSection?.nameAr || category || "Unknown",
         hall_en: hall,
         hall_ar: hall,
-      image_url: imageUrl?.trim() || DEFAULT_IMAGE
+        image_url: imageUrl?.trim() || DEFAULT_IMAGE
       });
       router.push("/admin/artifacts");
     } catch (error) {
@@ -152,20 +203,20 @@ export default function AdminNewArtifact() {
       className={`flex-1 w-full max-w-[1100px] mx-auto px-6 pt-10 pb-24 ${arabicClass}`}
     >
       {/* Page Header */}
-      <div className={`mb-10 flex justify-between items-end border-b border-[var(--color-outline-variant)]/30 pb-6`}>
+      <div className={`mb-10 flex justify-between items-end border-b border-outline-variant/30 pb-6`}>
         <div>
-          <h2 className={`${headingClass} text-[var(--color-primary)] mb-2 text-base uppercase tracking-widest`}>
+          <h2 className={`${headingClass} text-primary mb-2 text-base uppercase tracking-widest`}>
             {t.pageLabel}
           </h2>
-          <h1 className={`${headingClass} text-[var(--color-on-surface)] text-3xl sm:text-4xl`}>
+          <h1 className={`${headingClass} text-on-surface text-3xl sm:text-4xl`}>
             {t.pageTitle}
           </h1>
         </div>
         <div className={`pb-2 hidden md:block ${isRTL ? "text-left" : "text-right"}`}>
-          <p className={`${headingClass} text-[var(--color-outline)] tracking-widest mb-1 uppercase text-xs`}>
+          <p className={`${headingClass} text-outline tracking-widest mb-1 uppercase text-xs`}>
             {t.registryDate}
           </p>
-          <p className={`${headingClass} text-[var(--color-surface-tint)] text-lg`}>{today}</p>
+          <p className={`${headingClass} text-surface-tint text-lg`}>{today}</p>
         </div>
       </div>
 
@@ -175,31 +226,79 @@ export default function AdminNewArtifact() {
         <div className="lg:col-span-8 flex flex-col gap-8">
 
           {/* Basic Information */}
-          <section className="bg-[#1a1825] p-8 border-t border-[var(--color-primary)]/20 shadow-md">
-            <div className={`flex items-center mb-8 border-b border-[var(--color-outline-variant)]/20 pb-4 gap-3`}>
-              <Info className="text-[var(--color-primary)] w-5 h-5 shrink-0" />
-              <h3 className={`${headingClass} text-lg text-[var(--color-on-surface)] uppercase tracking-widest`}>
-                {t.sectionBasic}
-              </h3>
+          <section className="bg-bg-card p-8 border-t border-primary/20 shadow-md">
+            <div className={`flex items-center justify-between mb-8 border-b border-outline-variant/20 pb-4`}>
+              <div className="flex items-center gap-3">
+                <Info className="text-primary w-5 h-5 shrink-0" />
+                <h3 className={`${headingClass} text-lg text-on-surface uppercase tracking-widest`}>
+                  {t.sectionBasic}
+                </h3>
+              </div>
+              
+              <button
+                type="button"
+                onClick={handleAutoFill}
+                disabled={isAutoFilling}
+                className="flex items-center gap-2 border border-primary/40 hover:bg-primary/10 text-primary px-4 py-2 disabled:opacity-40 transition-colors"
+                title={isRTL ? "ترجمة تلقائية للبيانات الناقصة" : "Auto-fill missing translations"}
+              >
+                {isAutoFilling ? <Loader2 className="w-4 h-4 animate-spin" /> : "✨"}
+                <span className={`${headingClass} text-[10px] sm:text-xs uppercase tracking-wider font-bold`}>
+                  {isRTL ? "ترجمة الحقول الفارغة" : "Auto-Fill Missing"}
+                </span>
+              </button>
             </div>
 
             <div className="space-y-8">
-              {/* Artifact Name */}
-              <div className="relative group">
-                <label
-                  htmlFor="artifact_name"
-                  className={`block ${headingClass} text-[var(--color-primary)] mb-2 opacity-80 group-focus-within:opacity-100 transition-opacity uppercase tracking-wider text-xs`}
-                >
-                  {t.nameLabel}
-                </label>
+              {/* Artifact Name (Arabic) */}
+              <div className="relative group bg-surface-container-low p-4 border border-primary/20 rounded-md">
+                <div className="flex justify-between items-center mb-2">
+                  <label
+                    htmlFor="artifact_name_ar"
+                    className={`block ${headingClass} text-primary opacity-80 uppercase tracking-wider text-xs`}
+                  >
+                    اسم القطعة (عربي)
+                  </label>
+                </div>
                 <input
                   type="text"
-                  id="artifact_name"
-                  name="artifact_name"
+                  id="artifact_name_ar"
+                  name="artifact_name_ar"
                   required
-                  placeholder={t.namePlaceholder}
-                  dir={isRTL ? "rtl" : "ltr"}
-                  className={`w-full bg-transparent border-0 border-b border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-[var(--color-on-surface)] text-xl placeholder:text-[var(--color-outline-variant)] focus:outline-none ${isRTL ? "font-[family-name:var(--font-arabic)] text-right" : "font-[family-name:var(--font-body-lg)]"}`}
+                  value={nameAr}
+                  onChange={(e) => {
+                    setNameAr(e.target.value);
+                    setLastEdited(prev => ({...prev, name: "ar"}));
+                  }}
+                  placeholder={isRTL ? t.namePlaceholder : "مثال: تمثال أبو الهول"}
+                  dir="rtl"
+                  className={`w-full bg-transparent border-0 border-b border-primary/40 focus:border-primary focus:ring-0 px-0 py-2 text-on-surface text-xl placeholder:text-outline-variant focus:outline-none font-(family-name:--font-almarai) text-right`}
+                />
+              </div>
+
+              {/* Artifact Name (English) */}
+              <div className="relative group bg-surface-container-low p-4 border border-primary/20 rounded-md">
+                <div className="flex justify-between items-center mb-2">
+                  <label
+                    htmlFor="artifact_name_en"
+                    className={`block ${headingClass} text-primary opacity-80 uppercase tracking-wider text-xs`}
+                  >
+                    Artifact Name (English)
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  id="artifact_name_en"
+                  name="artifact_name_en"
+                  required
+                  value={nameEn}
+                  onChange={(e) => {
+                    setNameEn(e.target.value);
+                    setLastEdited(prev => ({...prev, name: "en"}));
+                  }}
+                  placeholder="e.g. The Great Sphinx"
+                  dir="ltr"
+                  className={`w-full bg-transparent border-0 border-b border-primary/40 focus:border-primary focus:ring-0 px-0 py-2 text-on-surface text-xl placeholder:text-outline-variant focus:outline-none font-(family-name:--font-body-lg) text-left`}
                 />
               </div>
 
@@ -207,7 +306,7 @@ export default function AdminNewArtifact() {
               <div className="relative group">
                 <label
                   htmlFor="category"
-                  className={`block ${headingClass} text-[var(--color-primary)] mb-2 opacity-80 group-focus-within:opacity-100 transition-opacity uppercase tracking-wider text-xs`}
+                  className={`block ${headingClass} text-primary mb-2 opacity-80 group-focus-within:opacity-100 transition-opacity uppercase tracking-wider text-xs`}
                 >
                   {t.categoryLabel}
                 </label>
@@ -215,21 +314,21 @@ export default function AdminNewArtifact() {
                   id="category"
                   name="category"
                   required
-                  className={`w-full bg-transparent border-0 border-b border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-[var(--color-on-surface)] text-lg focus:outline-none ${isRTL ? "font-[family-name:var(--font-arabic)]" : "font-[family-name:var(--font-body-lg)]"}`}
+                  className={`w-full bg-transparent border-0 border-b border-primary/40 focus:border-primary focus:ring-0 px-0 py-2 text-on-surface text-lg focus:outline-none ${isRTL ? "font-(family-name:--font-almarai)" : "font-(family-name:--font-body-lg)"}`}
                 >
-                  <option value="" className="bg-[#1a1825]">{t.categoryDefault}</option>
+                  <option value="" className="bg-bg-card">{t.categoryDefault}</option>
                   {sections.length > 0 ? (
                     sections.map((section) => (
-                      <option key={section.id} value={section.id} className="bg-[#1a1825]">
+                      <option key={section.id} value={section.id} className="bg-bg-card">
                         {isRTL ? section.nameAr : section.nameEn} ({section.count})
                       </option>
                     ))
                   ) : (
                     <>
-                      <option value="sculpture" className="bg-[#1a1825]">{t.cat1}</option>
-                      <option value="jewelry" className="bg-[#1a1825]">{t.cat2}</option>
-                      <option value="manuscript" className="bg-[#1a1825]">{t.cat3}</option>
-                      <option value="pottery" className="bg-[#1a1825]">{t.cat4}</option>
+                      <option value="sculpture" className="bg-bg-card">{t.cat1}</option>
+                      <option value="jewelry" className="bg-bg-card">{t.cat2}</option>
+                      <option value="manuscript" className="bg-bg-card">{t.cat3}</option>
+                      <option value="pottery" className="bg-bg-card">{t.cat4}</option>
                     </>
                   )}
                 </select>
@@ -239,48 +338,82 @@ export default function AdminNewArtifact() {
               <div className="relative group">
                 <label
                   htmlFor="hall"
-                  className={`block ${headingClass} text-[var(--color-primary)] mb-2 opacity-80 group-focus-within:opacity-100 transition-opacity uppercase tracking-wider text-xs`}
+                  className={`block ${headingClass} text-primary mb-2 opacity-80 group-focus-within:opacity-100 transition-opacity uppercase tracking-wider text-xs`}
                 >
                   {t.hallLabel}
                 </label>
                 <select
                   id="hall"
                   name="hall"
-                  className={`w-full bg-transparent border-0 border-b border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-[var(--color-on-surface)] text-lg focus:outline-none ${isRTL ? "font-[family-name:var(--font-arabic)]" : "font-[family-name:var(--font-body-lg)]"}`}
+                  className={`w-full bg-transparent border-0 border-b border-primary/40 focus:border-primary focus:ring-0 px-0 py-2 text-on-surface text-lg focus:outline-none ${isRTL ? "font-(family-name:--font-almarai)" : "font-(family-name:--font-body-lg)"}`}
                 >
-                  <option value="" className="bg-[#1a1825]">{t.hallDefault}</option>
-                  <option value="hall_a" className="bg-[#1a1825]">{t.hall1}</option>
-                  <option value="hall_b" className="bg-[#1a1825]">{t.hall2}</option>
-                  <option value="hall_c" className="bg-[#1a1825]">{t.hall3}</option>
+                  <option value="" className="bg-bg-card">{t.hallDefault}</option>
+                  <option value="hall_a" className="bg-bg-card">{t.hall1}</option>
+                  <option value="hall_b" className="bg-bg-card">{t.hall2}</option>
+                  <option value="hall_c" className="bg-bg-card">{t.hall3}</option>
                 </select>
               </div>
             </div>
           </section>
 
           {/* Historical Record */}
-          <section className="bg-[#1a1825] p-8 border-t border-[var(--color-primary)]/20 shadow-md">
-            <div className={`flex items-center mb-6 border-b border-[var(--color-outline-variant)]/20 pb-4 gap-3`}>
-              <PenTool className="text-[var(--color-primary)] w-5 h-5 shrink-0" />
-              <h3 className={`${headingClass} text-lg text-[var(--color-on-surface)] uppercase tracking-widest`}>
+          <section className="bg-bg-card p-8 border-t border-primary/20 shadow-md">
+            <div className={`flex items-center mb-6 border-b border-outline-variant/20 pb-4 gap-3`}>
+              <PenTool className="text-primary w-5 h-5 shrink-0" />
+              <h3 className={`${headingClass} text-lg text-on-surface uppercase tracking-widest`}>
                 {t.sectionDetails}
               </h3>
             </div>
 
-            <div className="relative group">
-              <label
-                htmlFor="description"
-                className={`block ${headingClass} text-[var(--color-primary)] mb-4 opacity-80 group-focus-within:opacity-100 transition-opacity uppercase tracking-wider text-xs`}
-              >
-                {t.descLabel}
-              </label>
+            {/* Description (Arabic) */}
+            <div className="relative group bg-surface-container-low p-4 border border-primary/20 rounded-md mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <label
+                  htmlFor="description_ar"
+                  className={`block ${headingClass} text-primary opacity-80 uppercase tracking-wider text-xs`}
+                >
+                  وصف القطعة (عربي)
+                </label>
+              </div>
               <textarea
-                id="description"
-                name="description"
+                id="description_ar"
+                name="description_ar"
                 required
-                rows={5}
-                placeholder={t.descPlaceholder}
-                dir={isRTL ? "rtl" : "ltr"}
-                className={`w-full bg-[var(--color-surface-container-low)] border border-[var(--color-primary)]/20 focus:border-[var(--color-primary)]/60 text-[var(--color-on-surface)] text-lg p-4 focus:outline-none resize-none placeholder:text-[var(--color-outline-variant)] leading-relaxed ${isRTL ? "font-[family-name:var(--font-arabic)] text-right leading-loose" : "font-[family-name:var(--font-body-md)]"}`}
+                rows={4}
+                value={descAr}
+                onChange={(e) => {
+                  setDescAr(e.target.value);
+                  setLastEdited(prev => ({...prev, desc: "ar"}));
+                }}
+                placeholder="اكتب وصفاً مفصلاً للقطعة هنا..."
+                dir="rtl"
+                className={`w-full bg-surface-container-lowest/50 border border-primary/20 focus:border-primary/60 text-on-surface text-lg p-4 focus:outline-none resize-none placeholder:text-outline-variant leading-loose font-(family-name:--font-almarai) text-right`}
+              />
+            </div>
+
+            {/* Description (English) */}
+            <div className="relative group bg-surface-container-low p-4 border border-primary/20 rounded-md">
+              <div className="flex justify-between items-center mb-4">
+                <label
+                  htmlFor="description_en"
+                  className={`block ${headingClass} text-primary opacity-80 uppercase tracking-wider text-xs`}
+                >
+                  Description (English)
+                </label>
+              </div>
+              <textarea
+                id="description_en"
+                name="description_en"
+                required
+                rows={4}
+                value={descEn}
+                onChange={(e) => {
+                  setDescEn(e.target.value);
+                  setLastEdited(prev => ({...prev, desc: "en"}));
+                }}
+                placeholder="Write a detailed description here..."
+                dir="ltr"
+                className={`w-full bg-surface-container-lowest/50 border border-primary/20 focus:border-primary/60 text-on-surface text-lg p-4 focus:outline-none resize-none placeholder:text-outline-variant leading-relaxed font-(family-name:--font-body-md) text-left`}
               />
             </div>
           </section>
@@ -290,21 +423,21 @@ export default function AdminNewArtifact() {
         <div className="lg:col-span-4 flex flex-col gap-8">
 
           {/* Media Upload */}
-          <section className="bg-[rgba(26,24,37,0.5)] backdrop-blur-md p-6 border border-[var(--color-primary)]/10 flex-1 flex flex-col shadow-md">
-            <div className="flex items-center mb-4 border-b border-[var(--color-outline-variant)]/20 pb-4 gap-3">
-              <Camera className="text-[var(--color-primary)] w-5 h-5 shrink-0" />
-              <h3 className={`${headingClass} text-base text-[var(--color-on-surface)] uppercase tracking-widest`}>
+          <section className="bg-[rgba(26,24,37,0.5)] backdrop-blur-md p-6 border border-primary/10 flex-1 flex flex-col shadow-md">
+            <div className="flex items-center mb-4 border-b border-outline-variant/20 pb-4 gap-3">
+              <Camera className="text-primary w-5 h-5 shrink-0" />
+              <h3 className={`${headingClass} text-base text-on-surface uppercase tracking-widest`}>
                 {t.sectionMedia}
               </h3>
             </div>
-            <p className={`${isRTL ? "font-[family-name:var(--font-arabic)] text-sm" : "font-[family-name:var(--font-body-md)] text-sm"} text-[var(--color-on-surface-variant)] mb-5`}>
+            <p className={`${isRTL ? "font-(family-name:--font-almarai) text-sm" : "font-(family-name:--font-body-md) text-sm"} text-on-surface-variant mb-5`}>
               {t.mediaHint}
             </p>
 
             <div className="relative group mb-5">
               <label
                 htmlFor="image_url"
-                className={`${headingClass} block text-[var(--color-primary)] mb-2 opacity-80 group-focus-within:opacity-100 transition-opacity uppercase tracking-wider text-xs`}
+                className={`${headingClass} block text-primary mb-2 opacity-80 group-focus-within:opacity-100 transition-opacity uppercase tracking-wider text-xs`}
               >
                 {isRTL ? "رابط الصورة" : "Image URL"}
               </label>
@@ -315,7 +448,7 @@ export default function AdminNewArtifact() {
                 name="image_url"
                 dir="ltr"
                 placeholder="https://..."
-                className="w-full bg-transparent border-0 border-b border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:ring-0 px-0 py-2 text-[var(--color-on-surface)] text-sm placeholder:text-[var(--color-outline-variant)] focus:outline-none font-[family-name:var(--font-body-md)]"
+                className="w-full bg-transparent border-0 border-b border-primary/40 focus:border-primary focus:ring-0 px-0 py-2 text-on-surface text-sm placeholder:text-outline-variant focus:outline-none font-(family-name:--font-body-md)"
               />
             </div>
 
@@ -330,7 +463,7 @@ export default function AdminNewArtifact() {
 
             {/* Dropzone */}
             <div
-              className="flex-1 min-h-[220px] border-2 border-dashed border-[var(--color-primary)]/40 hover:border-[var(--color-primary)] transition-colors bg-[var(--color-surface-container-lowest)]/30 flex flex-col items-center justify-center p-6 text-center cursor-pointer group relative overflow-hidden"
+              className="flex-1 min-h-[220px] border-2 border-dashed border-primary/40 hover:border-primary transition-colors bg-surface-container-lowest/30 flex flex-col items-center justify-center p-6 text-center cursor-pointer group relative overflow-hidden"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={e => e.preventDefault()}
               onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f); }}
@@ -342,11 +475,11 @@ export default function AdminNewArtifact() {
                   <img src={imagePreview} alt="preview" className="absolute inset-0 w-full h-full object-cover opacity-40" />
                   <div className="relative z-10 flex flex-col items-center gap-2">
                     {uploading ? (
-                      <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
                     ) : (
                       <CheckCircle2 className="w-8 h-8 text-green-400" />
                     )}
-                    <span className={`${headingClass} text-xs uppercase tracking-widest text-[var(--color-primary)]`}>
+                    <span className={`${headingClass} text-xs uppercase tracking-widest text-primary`}>
                       {uploading
                         ? (isRTL ? "جاري الرفع..." : "Uploading...")
                         : (isRTL ? "تم الرفع — اضغط لتغيير" : "Uploaded — click to change")}
@@ -355,16 +488,16 @@ export default function AdminNewArtifact() {
                 </>
               ) : (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mb-3 group-hover:bg-[var(--color-primary)]/20 transition-colors">
-                    <Upload className="text-[var(--color-primary)] w-6 h-6" />
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+                    <Upload className="text-primary w-6 h-6" />
                   </div>
-                  <span className={`${headingClass} text-[var(--color-primary)] text-xs uppercase tracking-widest mb-1 block`}>
+                  <span className={`${headingClass} text-primary text-xs uppercase tracking-widest mb-1 block`}>
                     {isRTL ? "اسحب الصورة هنا أو اضغط للاختيار" : "Drop image or click to browse"}
                   </span>
-                  <span className={`${isRTL ? "font-[family-name:var(--font-arabic)] text-xs" : "font-[family-name:var(--font-body-md)] text-sm"} text-[var(--color-outline-variant)] block`}>
+                  <span className={`${isRTL ? "font-(family-name:--font-almarai) text-xs" : "font-(family-name:--font-body-md) text-sm"} text-outline-variant block`}>
                     {t.uploadHint}
                   </span>
-                  <span className="text-[var(--color-outline-variant)] text-[10px] mt-3 block uppercase tracking-wider">
+                  <span className="text-outline-variant text-[10px] mt-3 block uppercase tracking-wider">
                     {t.uploadTypes}
                   </span>
                 </>
@@ -373,15 +506,15 @@ export default function AdminNewArtifact() {
           </section>
 
           {/* Submit Action */}
-          <section className="bg-[#1a1825] p-6 border-t border-[var(--color-primary)] shadow-[inset_0_1px_0_rgba(232,201,122,0.2)]">
+          <section className="bg-bg-card p-6 border-t border-primary shadow-[inset_0_1px_0_rgba(232,201,122,0.2)]">
             <div className="mb-5">
               <label className={`flex items-start gap-3 cursor-pointer ${isRTL ? "flex-row-reverse" : ""}`}>
                 <input
                   type="checkbox"
                   required
-                  className="mt-1 w-4 h-4 text-[var(--color-primary)] bg-transparent border-[var(--color-primary)]/50 rounded-none shrink-0"
+                  className="mt-1 w-4 h-4 text-primary bg-transparent border-primary/50 rounded-none shrink-0"
                 />
-                <span className={`${isRTL ? "font-[family-name:var(--font-arabic)] text-sm leading-loose" : "font-[family-name:var(--font-body-md)] text-sm"} text-[var(--color-on-surface-variant)]`}>
+                <span className={`${isRTL ? "font-(family-name:--font-almarai) text-sm leading-loose" : "font-(family-name:--font-body-md) text-sm"} text-on-surface-variant`}>
                   {t.certify}
                 </span>
               </label>
@@ -389,13 +522,13 @@ export default function AdminNewArtifact() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full relative group overflow-hidden border-2 border-[var(--color-primary)] text-[var(--color-primary)] px-8 py-4 uppercase tracking-[0.2em] transition-all duration-500 hover:text-[#0a0a0f] disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--color-primary)]/5 ${headingClass} text-xs font-bold flex items-center justify-center`}
+              className={`w-full relative group overflow-hidden border-2 border-primary text-primary px-8 py-4 uppercase tracking-[0.2em] transition-all duration-500 hover:text-bg-primary disabled:opacity-50 disabled:cursor-not-allowed bg-primary/5 ${headingClass} text-xs font-bold flex items-center justify-center`}
             >
               <span className="relative z-10 flex items-center gap-2">
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {t.submit}
               </span>
-              <div className="absolute inset-0 bg-[var(--color-primary)] translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-in-out z-0"></div>
+              <div className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out z-0"></div>
             </button>
           </section>
         </div>

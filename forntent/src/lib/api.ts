@@ -104,7 +104,8 @@ export async function getAdminArtifacts(page = 1, pageSize = 100) {
   }
 }
 
-export async function deleteArtifact(id: string | number) {
+export async function deleteArtifact(id: string | number, imageUrl?: string) {
+  // 1. Delete from backend DB (backend now handles image deletion securely via service_role)
   const res = await fetch(`${API_BASE}/artifacts/${encodeURIComponent(String(id))}`, {
     method: "DELETE",
   })
@@ -118,6 +119,8 @@ export async function deleteArtifact(id: string | number) {
 export type UpdateArtifactInput = {
   artifact_name_en?: string
   artifact_name_ar?: string
+  description_en?: string
+  description_ar?: string
   section_name_en?: string
   section_name_ar?: string
   image_url?: string
@@ -136,7 +139,18 @@ export async function updateArtifact(id: string | number, input: UpdateArtifactI
   }
   return payload
 }
-
+export async function translateBatch(fields_to_translate: { field_id: string, source_text: string, target_lang: "ar" | "en" }[]) {
+  if (fields_to_translate.length === 0) return {};
+  
+  const res = await fetch(`${API_BASE}/artifacts/translate-batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fields_to_translate }),
+  });
+  if (!res.ok) throw new Error("Batch translation failed");
+  const data = await res.json();
+  return data.translations as Record<string, string>;
+}
 export type CreateArtifactInput = {
   artifact_name_en: string
   artifact_name_ar?: string
@@ -165,6 +179,20 @@ export async function createArtifact(input: CreateArtifactInput) {
     throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail))
   }
   return payload
+}
+
+export async function translateText(text: string, target_lang: "ar" | "en"): Promise<string> {
+  const res = await fetch(`${API_BASE}/artifacts/translate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, target_lang }),
+  })
+  
+  if (!res.ok) {
+    throw new Error("Translation failed")
+  }
+  const payload = await res.json()
+  return payload.translated_text || ""
 }
 
 export async function sendChatMessage(query: string, history: any[] = [], locale: string = "ar") {

@@ -13,7 +13,7 @@ export default async function LocaleLayout({
     <div
       dir={isRTL ? "rtl" : "ltr"}
       lang={locale}
-      className={`w-full min-h-screen flex flex-col ${isRTL ? "font-[family-name:var(--font-noto-naskh)]" : ""}`}
+      className={isRTL ? "w-full min-h-screen flex flex-col font-(family-name:--font-almarai)" : "w-full min-h-screen flex flex-col"}
     >
       {children}
     </div>

@@ -2,7 +2,8 @@
 
 import logging
 import base64
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Request
+from app.api.rate_limit import limiter
 
 from app.models import ChatRequest, ChatResponse, ArtifactReference
 from app.graph.graph import rag_graph
@@ -45,8 +46,9 @@ async def run_rag(
     }
 
 
-@router.post("", response_model=ChatResponse, summary="Text chat with Corrective RAG agent")
-async def chat(request: ChatRequest) -> ChatResponse:
+@limiter.limit("5/minute")
+@router.post("/", response_model=ChatResponse, summary="Text chat with Corrective RAG agent")
+async def chat(request: Request, payload: ChatRequest) -> ChatResponse:
     """
     Send a text query (Arabic or English) to the museum Corrective RAG pipeline.
 
@@ -57,7 +59,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     If relevance is below 0.5 the rewriter is called again (up to 2 retries).
     """
-    if not request.query.strip():
+    if not payload.query.strip():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Query cannot be empty.",
@@ -65,9 +67,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     try:
         result = await run_rag(
-            query=request.query,
-            language=request.language,
-            conversation_history=request.conversation_history,
+            query=payload.query,
+            language=payload.language,
+            conversation_history=payload.conversation_history,
         )
     except Exception as exc:
         logger.exception("Corrective RAG graph error: %s", exc)

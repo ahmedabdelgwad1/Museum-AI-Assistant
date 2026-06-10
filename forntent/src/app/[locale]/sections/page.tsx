@@ -3,7 +3,7 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { FloatingAIButton } from "@/components/layout/FloatingAIButton";
 import { SectionCard } from "@/components/features/sections/SectionCard";
 import { getDictionary } from "@/lib/dictionaries";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -18,13 +18,15 @@ interface SectionData {
 export default function SectionsPage({ params }: { params: Promise<{ locale: string }> }) {
   const p = use(params);
   const locale = p.locale as "en" | "ar";
-  const dict = getDictionary(locale);
+  // ✅ useMemo: يمنع إعادة تنفيذ getDictionary في كل re-render
+  const dict = useMemo(() => getDictionary(locale), [locale]);
   const otherLocale = locale === 'en' ? 'ar' : 'en';
   const otherLocaleLabel = locale === 'en' ? 'عربي' : 'English';
 
   const [sections, setSections] = useState<SectionData[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  // ✅ useMemo: يمنع إعادة إنشاء supabase client في كل re-render
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     async function fetchSections() {
@@ -63,21 +65,21 @@ export default function SectionsPage({ params }: { params: Promise<{ locale: str
     }
     
     fetchSections();
-  }, []);
+  }, [supabase]);
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-[var(--color-bg-primary)] papyrus-texture w-full flex flex-col">
+      <div className="min-h-screen bg-bg-primary papyrus-texture w-full flex flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-[var(--color-bg-secondary)]/90 backdrop-blur border-b border-[var(--color-gold)] p-4 flex justify-between items-center">
-          <div className={`text-[var(--color-gold)] text-sm tracking-widest ${locale === 'ar' ? 'font-[family-name:var(--font-noto-naskh)] text-base' : 'font-[family-name:var(--font-cinzel)]'}`}>
+        <header className="sticky top-0 z-40 bg-bg-secondary/90 backdrop-blur border-b border-gold p-4 flex justify-between items-center">
+          <div className={`text-gold text-sm tracking-widest ${locale === 'ar' ? 'font-(family-name:--font-almarai) text-base' : 'font-(family-name:--font-inter)'}`}>
             {locale === 'ar' ? 'مكتبة الإسكندرية' : 'Bibliotheca Alexandrina'}
           </div>
           <div className="flex items-center gap-3">
-            <Link href={`/${locale}/welcome`} className="flex items-center justify-center text-sm border border-[var(--color-border)] w-8 h-8 rounded hover:border-[var(--color-gold)] text-[var(--color-text-secondary)] hover:text-[var(--color-gold)] transition-colors">
+            <Link href={`/${locale}/welcome`} className="flex items-center justify-center text-sm border border-border w-8 h-8 rounded hover:border-gold text-text-secondary hover:text-gold transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             </Link>
-            <Link href={`/${otherLocale}/sections`} className="text-sm border border-[var(--color-border)] px-3 py-1 rounded hover:border-[var(--color-gold)] text-[var(--color-text-secondary)] hover:text-[var(--color-gold)] transition-colors font-sans">
+            <Link href={`/${otherLocale}/sections`} className="text-sm border border-border px-3 py-1 rounded hover:border-gold text-text-secondary hover:text-gold transition-colors font-sans">
               {otherLocaleLabel}
             </Link>
           </div>
@@ -85,14 +87,14 @@ export default function SectionsPage({ params }: { params: Promise<{ locale: str
 
         <main className="flex-1 max-w-[1280px] w-full mx-auto px-6 py-12">
           <div className="text-center mb-12">
-            <h1 className={`text-4xl text-[var(--color-text-primary)] mb-4 ${locale === 'ar' ? 'font-[family-name:var(--font-noto-naskh)]' : 'font-[family-name:var(--font-cinzel)]'}`}>
+            <h1 className={`text-4xl text-text-primary mb-4 ${locale === 'ar' ? 'font-(family-name:--font-almarai)' : 'font-(family-name:--font-inter)'}`}>
               {dict.sections.title}
             </h1>
-            <div className="h-px w-24 bg-[var(--color-gold)] mx-auto"></div>
+            <div className="h-px w-24 bg-gold mx-auto"></div>
           </div>
 
           {loading ? (
-             <div className="w-full text-center py-20 text-[var(--color-text-secondary)]">Loading sections...</div>
+             <div className="w-full text-center py-20 text-text-secondary">Loading sections...</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {sections.map((section) => (

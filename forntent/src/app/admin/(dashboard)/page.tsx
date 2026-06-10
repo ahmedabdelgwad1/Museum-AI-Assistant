@@ -165,8 +165,8 @@ export default function AdminDashboard() {
 
       {/* Page header */}
       <div className="relative z-10 mb-12">
-        <h2 className={`${hFont(locale)} text-3xl text-[var(--color-primary-container)] mb-2`}>{t.pageTitle}</h2>
-        <p className={`${bodyFont(locale)} text-xl text-[var(--color-on-surface-variant)] max-w-2xl`}>{t.pageSub}</p>
+        <h2 className={`${hFont(locale)} text-3xl text-primary-container mb-2`}>{t.pageTitle}</h2>
+        <p className={`${bodyFont(locale)} text-xl text-on-surface-variant max-w-2xl`}>{t.pageSub}</p>
       </div>
 
       {/* Bento Grid */}
@@ -174,56 +174,56 @@ export default function AdminDashboard() {
         {/* Stat Cards */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           {/* Total */}
-          <div className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-[var(--color-gold)]/20 border-t-[var(--color-gold-light)]/60 p-8 relative overflow-hidden group shadow-inner">
+          <div className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-gold/20 border-t-gold-light/60 p-8 relative overflow-hidden group shadow-inner">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Building2 className="w-16 h-16 text-[var(--color-primary-container)]" />
+              <Building2 className="w-16 h-16 text-primary-container" />
             </div>
-            <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] mb-4`}>{t.totalArtifacts}</h3>
-            <p className="font-[family-name:var(--font-display-lg)] text-6xl font-bold text-[var(--color-primary-container)]">{totalArtifacts}</p>
-            <div className="w-12 h-[1px] bg-[var(--color-primary-container)] mt-6" />
+            <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-on-surface-variant mb-4`}>{t.totalArtifacts}</h3>
+            <p className="font-(family-name:--font-display-lg) text-6xl font-bold text-primary-container">{totalArtifacts}</p>
+            <div className="w-12 h-px bg-primary-container mt-6" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-[var(--color-gold)]/20 p-6 flex flex-col justify-between shadow-inner">
-              <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] mb-2`}>{t.recentAcq}</h3>
-              <p className="font-[family-name:var(--font-headline-md)] text-3xl text-[var(--color-surface-tint)]">+{recentCount}</p>
-              <p className={`text-xs text-[var(--color-on-surface-variant)] ${bodyFont(locale)} mt-2`}>{t.recentAcqSub}</p>
+            <div className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-gold/20 p-6 flex flex-col justify-between shadow-inner">
+              <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-on-surface-variant mb-2`}>{t.recentAcq}</h3>
+              <p className="font-(family-name:--font-headline-md) text-3xl text-surface-tint">+{recentCount}</p>
+              <p className={`text-xs text-on-surface-variant ${bodyFont(locale)} mt-2`}>{t.recentAcqSub}</p>
             </div>
-            <div className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-[var(--color-gold)]/20 border-t-[var(--color-error-container)]/50 p-6 flex flex-col justify-between shadow-inner">
-              <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-[var(--color-on-surface-variant)] mb-2`}>{t.pending}</h3>
-              <p className="font-[family-name:var(--font-headline-md)] text-3xl text-[var(--color-error-container)]">0</p>
-              <p className={`text-xs text-[var(--color-on-surface-variant)] ${bodyFont(locale)} mt-2`}>{isAr ? "الكل مراجع!" : "All caught up!"}</p>
+            <div className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-gold/20 border-t-error-container/50 p-6 flex flex-col justify-between shadow-inner">
+              <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-on-surface-variant mb-2`}>{t.pending}</h3>
+              <p className="font-(family-name:--font-headline-md) text-3xl text-error-container">0</p>
+              <p className={`text-xs text-on-surface-variant ${bodyFont(locale)} mt-2`}>{isAr ? "الكل مراجع!" : "All caught up!"}</p>
             </div>
           </div>
         </div>
 
         {/* Chart */}
-        <div className="lg:col-span-8 bg-[rgba(26,24,37,0.8)] backdrop-blur border border-[var(--color-gold)]/20 p-8 flex flex-col shadow-inner">
+        <div className="lg:col-span-8 bg-[rgba(26,24,37,0.8)] backdrop-blur border border-gold/20 p-8 flex flex-col shadow-inner">
           <div className="flex justify-between items-center mb-8">
-            <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-[var(--color-primary-container)]`}>{t.chartTitle}</h3>
-            <button className="text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary-container)] transition-colors">
+            <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-primary-container`}>{t.chartTitle}</h3>
+            <button className="text-on-surface-variant hover:text-primary-container transition-colors">
               <MoreHorizontal size={24} />
             </button>
           </div>
-          <div className="flex items-end gap-4 h-56 border-l border-b border-[var(--color-outline-variant)]/30 pb-4 px-4">
+          <div className="flex items-end gap-4 h-56 border-l border-b border-outline-variant/30 pb-4 px-4">
             {sectionsData.length > 0 ? (
               sectionsData.map((bar, i) => (
                 <div key={i} className="flex flex-col items-center gap-2 group w-full px-1">
                   <div
-                    className="w-full bg-[var(--color-primary-container)]/20 border border-[var(--color-primary-container)]/50 group-hover:bg-[var(--color-primary-container)]/40 transition-colors relative cursor-pointer"
+                    className="w-full bg-primary-container/20 border border-primary-container/50 group-hover:bg-primary-container/40 transition-colors relative cursor-pointer"
                     style={{ height: bar.height }}
                   >
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 font-[family-name:var(--font-label-sm)] text-[var(--color-primary-container)] transition-opacity text-xs">
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 font-(family-name:--font-label-sm) text-primary-container transition-opacity text-xs">
                       {bar.count}
                     </div>
                   </div>
-                  <span className={`text-[10px] uppercase text-[var(--color-on-surface-variant)] hidden sm:block ${hFont(locale)} truncate max-w-full text-center`} title={bar.name}>
+                  <span className={`text-[10px] uppercase text-on-surface-variant hidden sm:block ${hFont(locale)} truncate max-w-full text-center`} title={bar.name}>
                     {bar.name.substring(0, 15)}{bar.name.length > 15 ? '...' : ''}
                   </span>
                 </div>
               ))
             ) : (
-               <div className="w-full text-center text-sm text-[var(--color-on-surface-variant)] self-center">Loading...</div>
+               <div className="w-full text-center text-sm text-on-surface-variant self-center">Loading...</div>
             )}
           </div>
         </div>
@@ -231,31 +231,31 @@ export default function AdminDashboard() {
 
       {/* Recent Activity */}
       <div className="relative z-10">
-        <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-[var(--color-primary-container)] mb-6 flex items-center gap-2`}>
+        <h3 className={`${hFont(locale)} text-xs uppercase tracking-widest text-primary-container mb-6 flex items-center gap-2`}>
           <Clock size={16} /> {t.activityTitle}
         </h3>
         <div className="flex flex-col gap-4">
           {recentActivity.map((item) => (
-            <div key={item.id} className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-[var(--color-gold)]/20 p-4 flex items-center gap-5 hover:border-[var(--color-primary-container)]/50 transition-colors cursor-pointer group shadow-inner">
-              <div className="w-16 h-16 border border-[var(--color-primary-container)]/30 p-1 shrink-0">
+            <div key={item.id} className="bg-[rgba(26,24,37,0.8)] backdrop-blur border border-gold/20 p-4 flex items-center gap-5 hover:border-primary-container/50 transition-colors cursor-pointer group shadow-inner">
+              <div className="w-16 h-16 border border-primary-container/30 p-1 shrink-0">
                 <div className="relative w-full h-full grayscale group-hover:grayscale-0 transition-all duration-500">
                   <Image src={item.image} alt={item.title} fill className="object-cover" unoptimized />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className={`${hFont(locale)} text-lg text-[var(--color-on-surface)] truncate`}>{item.title}</h4>
-                <p className={`${bodyFont(locale)} text-sm text-[var(--color-on-surface-variant)] truncate`}>{item.desc}</p>
+                <h4 className={`${hFont(locale)} text-lg text-on-surface truncate`}>{item.title}</h4>
+                <p className={`${bodyFont(locale)} text-sm text-on-surface-variant truncate`}>{item.desc}</p>
               </div>
               <div className={`text-right hidden sm:block shrink-0`}>
-                <p className={`${hFont(locale)} text-xs text-[var(--color-on-surface-variant)] uppercase tracking-widest`}>{item.time}</p>
-                <span className={`inline-block mt-2 px-2 py-1 ${hFont(locale)} text-[10px] border tracking-wider uppercase text-[var(--color-primary-container)] border-[var(--color-primary-container)]/20 bg-[var(--color-primary-container)]/10`}>
+                <p className={`${hFont(locale)} text-xs text-on-surface-variant uppercase tracking-widest`}>{item.time}</p>
+                <span className={`inline-block mt-2 px-2 py-1 ${hFont(locale)} text-[10px] border tracking-wider uppercase text-primary-container border-primary-container/20 bg-primary-container/10`}>
                   {isAr ? "جديد" : "NEW"}
                 </span>
               </div>
             </div>
           ))}
           {recentActivity.length === 0 && (
-            <div className="text-[var(--color-on-surface-variant)] text-sm">{isAr ? "لا يوجد نشاط أخير." : "No recent activity."}</div>
+            <div className="text-on-surface-variant text-sm">{isAr ? "لا يوجد نشاط أخير." : "No recent activity."}</div>
           )}
         </div>
       </div>

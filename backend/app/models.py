@@ -58,6 +58,18 @@ class ArtifactUpdateRequest(BaseModel):
     image_url: Optional[str] = None
 
 
+class BatchTranslateField(BaseModel):
+    field_id: str = Field(..., description="The ID/name of the field to update in the UI")
+    source_text: str = Field(..., description="The text to translate")
+    target_lang: str = Field(..., description="'ar' or 'en'")
+
+class BatchTranslateRequest(BaseModel):
+    fields_to_translate: List[BatchTranslateField]
+
+class BatchTranslateResponse(BaseModel):
+    translations: Dict[str, str] = Field(..., description="Dictionary mapping field_id to translated_text")
+
+
 class ArtifactListResponse(BaseModel):
     total: int
     page: int

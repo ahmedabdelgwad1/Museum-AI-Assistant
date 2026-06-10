@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     api_host: str = Field(default="0.0.0.0", env="API_HOST")
     api_port: int = Field(default=8000, env="API_PORT")
 
+    # Daily.co API Key
+    daily_api_key: str = Field(default="", env="DAILY_API_KEY")
+
     # CORS origins
     cors_origins: list[str] = Field(default=["*"], env="CORS_ORIGINS")
 

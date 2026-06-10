@@ -1,11 +1,51 @@
-import { useState, useRef, useEffect } from 'react';
-import { ChatMessage, AIResponse } from '@/types';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { ChatMessage } from '@/types';
 import { getDictionary } from '@/lib/dictionaries';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Helper to parse SSE stream from FastAPI
+const readSSEStream = async (
+  response: Response,
+  onToken: (token: string) => void,
+  onDone: (audioBase64: string | null) => void,
+  onError: (errorMsg: string) => void
+) => {
+  const reader = response.body?.getReader();
+  const decoder = new TextDecoder("utf-8");
+  if (!reader) throw new Error("No reader available");
+
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n\n");
+    buffer = lines.pop() || ""; // keep the last incomplete chunk in the buffer
+
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const jsonStr = line.slice(6);
+        try {
+          const data = JSON.parse(jsonStr);
+          if (data.type === "token") {
+            onToken(data.content);
+          } else if (data.type === "done") {
+            onDone(data.audio_base64 || null);
+          } else if (data.type === "error") {
+            onError(data.content);
+          }
+        } catch (e) {
+          console.error("Error parsing SSE JSON:", e, jsonStr);
+        }
+      }
+    }
+  }
+};
+
 export function useChat(artifact: any, locale: 'en' | 'ar') {
-  const dict = getDictionary(locale);
+  const dict = useMemo(() => getDictionary(locale), [locale]);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { 
       role: 'ai', 
@@ -30,11 +70,8 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
     }
   };
 
-  // Stop audio if the user leaves the page
   useEffect(() => {
-    return () => {
-      stopCurrentAudio();
-    };
+    return () => stopCurrentAudio();
   }, []);
 
   const startRecording = async () => {
@@ -54,7 +91,6 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         sendAudioToFastAPI(audioBlob);
-        // Stop all audio tracks to release the microphone
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -73,69 +109,110 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
     }
   };
 
+  const streamChatResponse = async (query: string, historyToSend: any[]) => {
+    // Add Thinking AI message to be replaced via streaming
+    setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
+    
+    let isFirstToken = true;
+
+    try {
+      const response = await fetch(`${API_URL}/chat/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, language: locale, conversation_history: historyToSend })
+      });
+
+      if (!response.ok) throw new Error('Network response was not ok');
+
+      await readSSEStream(
+        response,
+        (token) => {
+          setMessages(prev => {
+            const newMsgs = [...prev];
+            const lastMsg = newMsgs[newMsgs.length - 1];
+            if (lastMsg.role === 'ai') {
+              // Replace "Thinking..." with the first token, then append subsequent tokens
+              const currentContent = isFirstToken ? '' : lastMsg.content;
+              isFirstToken = false;
+              newMsgs[newMsgs.length - 1] = {
+                ...lastMsg,
+                content: currentContent + token
+              };
+            }
+            return newMsgs;
+          });
+        },
+        (audioBase64) => {
+          if (audioBase64) {
+            stopCurrentAudio();
+            const audioUrl = `data:audio/mp3;base64,${audioBase64}`;
+            const audio = new Audio(audioUrl);
+            currentAudioRef.current = audio;
+            audio.play();
+          }
+        },
+        (errorMsg) => {
+          setMessages(prev => {
+            const newMsgs = [...prev];
+            newMsgs[newMsgs.length - 1] = { role: 'ai', content: `[Error] ${errorMsg}` };
+            return newMsgs;
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Streaming error:", error);
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { role: 'ai', content: locale === 'ar' ? 'حدث خطأ في الاتصال بالخادم.' : 'Error connecting to the server.' };
+        return newMsgs;
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const sendAudioToFastAPI = async (audioBlob: Blob) => {
-    setMessages(prev => [...prev, { role: 'user', content: locale === 'ar' ? '🎤 رسالة صوتية...' : '🎤 Voice message...' }]);
+    setMessages(prev => [...prev, { role: 'user', content: locale === 'ar' ? '🎤 جاري الاستماع...' : '🎤 Listening...' }]);
     setIsLoading(true);
 
     try {
       const formData = new FormData();
       formData.append("file", audioBlob, "audio.webm");
-
-      const historyToSend = messages
-        .filter(m => m.content !== dict.ai.thinking && !m.content.includes('رسالة صوتية') && !m.content.includes('Voice message'))
-        .map(m => ({ role: m.role, content: m.content }));
       formData.append("language", locale);
-      formData.append("conversation_history", JSON.stringify(historyToSend));
-      
-      setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
 
-      const response = await fetch(`${API_URL}/voice`, { 
+      // Step 1: Transcribe fast
+      const response = await fetch(`${API_URL}/transcribe`, { 
         method: "POST", 
         body: formData 
       });
 
-      if (!response.ok) {
-        let errorDetail = "Failed to process voice query";
-        try {
-          const errBody = await response.json();
-          if (errBody.detail) errorDetail = errBody.detail;
-        } catch (e) {}
-        throw new Error(errorDetail);
-      }
-
-      const data = await response.json();
+      if (!response.ok) throw new Error("Transcription failed");
       
-      if (data.audio_base64) {
-        stopCurrentAudio();
-        const audioUrl = `data:audio/mp3;base64,${data.audio_base64}`;
-        const audio = new Audio(audioUrl);
-        currentAudioRef.current = audio;
-        audio.play();
-      }
+      const data = await response.json();
+      const transcript = data.transcript;
 
+      // Replace "Listening..." with actual transcript
       setMessages(prev => {
         const newMsgs = [...prev];
-        // Remove the "Thinking..." message
-        newMsgs.pop(); 
-        // Remove the "Voice message..." message
-        newMsgs.pop(); 
-
-        // Add the actual transcript as a user message
-        newMsgs.push({ role: 'user', content: data.transcript });
-        // Add the AI response text
-        newMsgs.push({ role: 'ai', content: data.response });
-        
+        newMsgs[newMsgs.length - 1] = { role: 'user', content: transcript };
         return newMsgs;
       });
+
+      // Prepare history (excluding the current voice message since we pass it as query)
+      const historyToSend = messages
+        .filter(m => m.content && !m.content.includes('🎤'))
+        .map(m => ({ role: m.role, content: m.content }));
+
+      // Step 2: Stream LLM response
+      await streamChatResponse(transcript, historyToSend);
+
     } catch (error: any) {
       console.error("Error sending voice:", error);
       setMessages(prev => {
         const newMsgs = [...prev];
-        const errorMessage = error.message || (locale === 'ar' ? 'حدث خطأ في معالجة الصوت.' : 'Error processing voice.');
-        newMsgs[newMsgs.length - 1] = { role: 'ai', content: `[Error] ${errorMessage}` };
+        newMsgs[newMsgs.length - 1] = { role: 'ai', content: locale === 'ar' ? 'حدث خطأ في معالجة الصوت.' : 'Error processing voice.' };
         return newMsgs;
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -148,62 +225,11 @@ export function useChat(artifact: any, locale: 'en' | 'ar') {
     setInput('');
     setIsLoading(true);
 
-    setMessages(prev => [...prev, { role: 'ai', content: dict.ai.thinking }]);
+    const historyToSend = messages
+      .filter(m => m.content && !m.content.includes('🎤'))
+      .map(m => ({ role: m.role, content: m.content }));
 
-    try {
-      const historyToSend = messages
-        .filter(m => m.content !== dict.ai.thinking && !m.content.includes('رسالة صوتية') && !m.content.includes('Voice message'))
-        .map(m => ({ role: m.role, content: m.content }));
-
-      const response = await fetch(`${API_URL}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: msg,
-          language: locale,
-          conversation_history: historyToSend
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data = await response.json();
-      
-      setMessages(prev => {
-        const newMsgs = [...prev];
-        newMsgs[newMsgs.length - 1] = { 
-          role: 'ai', 
-          content: data.response || "No response received" 
-        };
-        return newMsgs;
-      });
-
-      // If the backend returns audio_base64, play it
-      if (data.audio_base64) {
-        stopCurrentAudio(); // Strictly stop any audio that might have started during the loading time
-        const audioUrl = `data:audio/mp3;base64,${data.audio_base64}`;
-        const audio = new Audio(audioUrl);
-        currentAudioRef.current = audio;
-        audio.play();
-      }
-
-    } catch (error) {
-      console.error("Error fetching chat:", error);
-      setMessages(prev => {
-        const newMsgs = [...prev];
-        newMsgs[newMsgs.length - 1] = { 
-          role: 'ai', 
-          content: locale === 'ar' ? 'حدث خطأ في الاتصال بالخادم.' : 'Error connecting to the server.' 
-        };
-        return newMsgs;
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    await streamChatResponse(msg, historyToSend);
   };
 
   return {
