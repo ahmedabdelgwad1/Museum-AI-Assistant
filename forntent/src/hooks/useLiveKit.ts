@@ -139,6 +139,16 @@ export function useLiveKit(artifact: any, locale: 'en' | 'ar') {
         setIsRecording(true);
       }
 
+      // Enable camera silently — no preview shown to visitor.
+      // The server-side VisitorVision (MediaPipe) analyzes frames in background
+      // to detect when the visitor looks at the robot before triggering the greeting.
+      try {
+        await room.localParticipant.setCameraEnabled(true);
+      } catch (camErr) {
+        // Camera is optional — voice still works if camera is denied
+        console.warn('[useLiveKit] Camera not available, vision disabled:', camErr);
+      }
+
       return room;
     } catch (err) {
       console.error('LiveKit connection error:', err);
