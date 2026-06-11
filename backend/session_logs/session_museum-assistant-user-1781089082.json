@@ -1,0 +1,58 @@
+{
+  "session_id": "museum-assistant-user-1781089082",
+  "locale": "en",
+  "start_time": "2026-06-10T13:58:20.449165",
+  "end_time": "2026-06-10T13:59:34.541911",
+  "total_duration_seconds": 74.09,
+  "total_turns": 6,
+  "turns": [
+    {
+      "timestamp": "2026-06-10T13:58:42.188914",
+      "user_query": "['Hello sir, what is the new item?']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 6.346,
+      "generation_time_seconds": 6.346,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T13:58:51.073940",
+      "user_query": "['the']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.772,
+      "generation_time_seconds": 1.772,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T13:58:55.899705",
+      "user_query": "['I can bring another one']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.409,
+      "generation_time_seconds": 1.409,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T13:59:07.234660",
+      "user_query": "['Muka, masan huwa...']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.585,
+      "generation_time_seconds": 1.585,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T13:59:09.141898",
+      "user_query": "['I go up to the country.']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.136,
+      "generation_time_seconds": 1.137,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T13:59:13.383805",
+      "user_query": "[\"It's time to drink the milk.\"]",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.68,
+      "generation_time_seconds": 1.68,
+      "relevance_score": 0.0
+    }
+  ]
+}

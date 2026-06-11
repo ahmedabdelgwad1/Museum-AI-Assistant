@@ -1,0 +1,42 @@
+{
+  "session_id": "museum-assistant-user-1781088085",
+  "locale": "en",
+  "start_time": "2026-06-10T13:41:40.175916",
+  "end_time": "2026-06-10T13:43:09.578299",
+  "total_duration_seconds": 89.4,
+  "total_turns": 4,
+  "turns": [
+    {
+      "timestamp": "2026-06-10T13:42:08.829333",
+      "user_query": "['Hello']",
+      "ai_response": "Hello. Welcome to the Bibliotheca Alexandrina Antiquities Museum. How can I assist you today? Would you like to explore our exhibits?",
+      "latency_seconds": 7.928,
+      "generation_time_seconds": 8.024,
+      "relevance_score": 0.6
+    },
+    {
+      "timestamp": "2026-06-10T13:42:12.005429",
+      "user_query": "['Hello?']",
+      "ai_response": "Hello. Welcome to the Bibliotheca Alexandrina Antiquities Museum. How can I help you today? Would you like to explore our exhibits?",
+      "latency_seconds": 2.072,
+      "generation_time_seconds": 2.173,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T13:42:22.176771",
+      "user_query": "['about the most important things.']",
+      "ai_response": "We have many significant artifacts here. One notable piece is the \"Offering table\" located in Patio 2, which is a fascinating example of ancient religious practices. Would you like to know more about its discovery site in Upper Egypt?",
+      "latency_seconds": 1.508,
+      "generation_time_seconds": 1.693,
+      "relevance_score": 0.5
+    },
+    {
+      "timestamp": "2026-06-10T13:42:32.888555",
+      "user_query": "['Lamech.']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.582,
+      "generation_time_seconds": 1.582,
+      "relevance_score": 0.0
+    }
+  ]
+}

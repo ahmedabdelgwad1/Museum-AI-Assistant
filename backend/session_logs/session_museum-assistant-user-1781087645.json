@@ -1,0 +1,26 @@
+{
+  "session_id": "museum-assistant-user-1781087645",
+  "locale": "en",
+  "start_time": "2026-06-10T13:34:22.136719",
+  "end_time": "2026-06-10T13:36:04.484236",
+  "total_duration_seconds": 102.35,
+  "total_turns": 2,
+  "turns": [
+    {
+      "timestamp": "2026-06-10T13:34:41.889097",
+      "user_query": "['audio']",
+      "ai_response": "I'm not sure about that based on my current info, but I can help with other museum topics. We have a variety of artifacts on display, such as the pot strainer with floral and geometrical motifs in the Islamic Antiquities hall. Would you like to know more about it?",
+      "latency_seconds": 9.08,
+      "generation_time_seconds": 9.233,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T13:35:00.896462",
+      "user_query": "['Mustamburton Sings.']",
+      "ai_response": "I'm not sure about that based on my current info, but I can help with other museum topics. We have a variety of artifacts on display, such as the oil lamp with two nozzles depicting a theatrical mask in the Antiquities of the BA Site hall. Would you like to know more about it?",
+      "latency_seconds": 1.711,
+      "generation_time_seconds": 1.828,
+      "relevance_score": 0.0
+    }
+  ]
+}

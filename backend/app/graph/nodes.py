@@ -394,3 +394,75 @@ def generate_answer_stream(state: GraphState):
         else "Sorry, the system is busy. Please try again in a moment."
     )
     yield error_msg
+
+async def generate_answer_stream_async(state: GraphState):
+    from groq import AsyncGroq, RateLimitError
+    import asyncio
+
+    lang = state.get("language", "en")
+    question = state["original_query"]
+    docs = state.get("retrieved_docs", [])
+    score = state.get("relevance_score", 0.0)
+    rewrites = state.get("rewrite_count", 0)
+    history = state.get("conversation_history") or []
+
+    logger.info(
+        "AsyncStreamGenerator | lang=%s | relevance=%.2f | rewrites=%d | docs=%d | history=%d turns",
+        lang, score, rewrites, len(docs), len(history),
+    )
+
+    low_confidence = score < settings.relevance_threshold and rewrites >= settings.max_rewrite_attempts
+
+    system_prompt = get_system_prompt(lang, low_confidence=low_confidence)
+    context = _build_artifact_context(docs)
+    user_msg = get_context_template(lang).format(context=context, question=question)
+
+    messages: list[dict] = [{"role": "system", "content": system_prompt}]
+
+    valid_roles = {"user", "assistant", "ai"}
+    for turn in history[-6:]:
+        role = turn.get("role", "")
+        content = turn.get("content", "")
+        if role == "ai":
+            role = "assistant"
+        if role in valid_roles and content:
+            messages.append({"role": role, "content": content})
+
+    messages.append({"role": "user", "content": user_msg})
+
+    keys = settings.groq_api_keys
+    num_keys = len(keys)
+    global _current_key_index
+
+    for attempt in range(num_keys):
+        idx = (_current_key_index + attempt) % num_keys
+        client = AsyncGroq(api_key=keys[idx])
+        try:
+            stream = await client.chat.completions.create(
+                model=settings.llm_model,
+                messages=messages,
+                temperature=0.4,
+                max_tokens=1200,
+                stream=True,
+            )
+            _current_key_index = idx
+            async for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                yield delta
+            return
+        except RateLimitError as exc:
+            logger.warning(
+                "Stream rate limit on key #%d (%s). Trying next key...", idx, str(exc)[:80]
+            )
+            _current_key_index = (idx + 1) % num_keys
+        except Exception as exc:
+            logger.error("Stream LLM call failed on key #%d: %s", idx, exc)
+            raise
+
+    # All keys exhausted
+    error_msg = (
+        "عذرًا، النظام مشغول حالياً. يرجى المحاولة مرة أخرى بعد لحظات."
+        if lang == "ar"
+        else "Sorry, the system is busy. Please try again in a moment."
+    )
+    yield error_msg

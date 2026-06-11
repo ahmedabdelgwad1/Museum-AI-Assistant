@@ -1,0 +1,34 @@
+{
+  "session_id": "museum-assistant-user-1781089745",
+  "locale": "en",
+  "start_time": "2026-06-10T14:09:21.186575",
+  "end_time": "2026-06-10T14:10:34.508106",
+  "total_duration_seconds": 73.32,
+  "total_turns": 3,
+  "turns": [
+    {
+      "timestamp": "2026-06-10T14:09:38.409760",
+      "user_query": "['Hello?']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 7.465,
+      "generation_time_seconds": 7.466,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T14:09:46.143753",
+      "user_query": "[\"Let's go.\"]",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.11,
+      "generation_time_seconds": 1.11,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T14:09:50.186534",
+      "user_query": "['Just make the print of the arrow code']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.475,
+      "generation_time_seconds": 1.475,
+      "relevance_score": 0.0
+    }
+  ]
+}

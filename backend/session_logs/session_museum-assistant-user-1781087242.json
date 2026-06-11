@@ -1,0 +1,26 @@
+{
+  "session_id": "museum-assistant-user-1781087242",
+  "locale": "en",
+  "start_time": "2026-06-10T13:27:38.292736",
+  "end_time": "2026-06-10T13:30:27.752288",
+  "total_duration_seconds": 169.46,
+  "total_turns": 2,
+  "turns": [
+    {
+      "timestamp": "2026-06-10T13:27:56.762552",
+      "user_query": "['Hello.']",
+      "ai_response": "Hello. Welcome to the Bibliotheca Alexandrina Antiquities Museum. How can I help you today? Would you like to explore our exhibits?",
+      "latency_seconds": 8.265,
+      "generation_time_seconds": 8.363,
+      "relevance_score": 0.6
+    },
+    {
+      "timestamp": "2026-06-10T13:28:25.180274",
+      "user_query": "['Tell me about important things.']",
+      "ai_response": "We have many significant artifacts here. One notable piece is the 'Bust of Socrates' in the Greco-Roman Antiquities hall, which is a Roman replica of a Greek original. Would you like to know more about the era it was made in?",
+      "latency_seconds": 1.692,
+      "generation_time_seconds": 1.858,
+      "relevance_score": 0.4
+    }
+  ]
+}

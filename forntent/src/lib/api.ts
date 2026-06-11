@@ -212,20 +212,3 @@ export async function sendChatMessage(query: string, history: any[] = [], locale
 
   return await res.json()
 }
-
-export async function sendVoiceMessage(audioBlob: Blob, history: any[] = [], locale: string = "ar") {
-  const formData = new FormData()
-  formData.append("file", audioBlob, "recording.webm")
-  formData.append("language", locale)
-  formData.append("conversation_history", JSON.stringify(history))
-  const res = await fetch(`${API_BASE}/voice`, {
-    method: "POST",
-    body: formData
-  })
-
-  if (!res.ok) {
-    throw new Error(`تعذر الاتصال بالسيرفر. الكود: ${res.status}`)
-  }
-
-  return await res.json()
-}

@@ -11,9 +11,8 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.api.middleware import RequestLoggingMiddleware, setup_cors
 from app.api.routes.chat import router as chat_router
-from app.api.routes.voice import router as voice_router
+from app.api.routes.token import router as token_router
 from app.api.routes.artifacts import router as artifacts_router
-from app.api.routes.chat_stream import router as chat_stream_router
 from slowapi.errors import RateLimitExceeded
 from app.api.rate_limit import limiter, rate_limit_exceeded_handler
 
@@ -87,8 +86,7 @@ setup_cors(app, settings.cors_origins)
 
 # Routers
 app.include_router(chat_router)
-app.include_router(chat_stream_router)
-app.include_router(voice_router)
+app.include_router(token_router)
 app.include_router(artifacts_router)
 
 

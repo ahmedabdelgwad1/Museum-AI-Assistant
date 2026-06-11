@@ -1,0 +1,58 @@
+{
+  "session_id": "museum-assistant-user-1781089370",
+  "locale": "en",
+  "start_time": "2026-06-10T14:03:05.337187",
+  "end_time": "2026-06-10T14:04:32.828366",
+  "total_duration_seconds": 87.49,
+  "total_turns": 6,
+  "turns": [
+    {
+      "timestamp": "2026-06-10T14:03:17.546435",
+      "user_query": "['I want to talk to you about it.']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.421,
+      "generation_time_seconds": 1.422,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T14:03:34.557445",
+      "user_query": "['You there? Any little calls?']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.849,
+      "generation_time_seconds": 1.864,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T14:03:42.183943",
+      "user_query": "['when the heat is gone.']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.125,
+      "generation_time_seconds": 1.125,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T14:03:46.532987",
+      "user_query": "[\"I mean, I wouldn't do anything.\"]",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.462,
+      "generation_time_seconds": 1.462,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T14:03:50.362060",
+      "user_query": "[\"That's the decision of the UI community.\"]",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.512,
+      "generation_time_seconds": 1.512,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-10T14:04:00.741659",
+      "user_query": "['Hasrat alaikum.']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 1.634,
+      "generation_time_seconds": 1.634,
+      "relevance_score": 0.0
+    }
+  ]
+}

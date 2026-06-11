@@ -1,6 +1,7 @@
 "use client";
 import { Send, Mic, Sparkles } from "lucide-react";
-import { useChat } from "@/hooks/useChat";
+import { useLiveKit as useChat } from "@/hooks/useLiveKit";
+import { RoomAudioRenderer } from "@livekit/components-react";
 
 type Props = {
   artifact?: any;
@@ -9,7 +10,7 @@ type Props = {
 };
 
 export function RealTimeAIChat({ artifact, locale, embedded = false }: Props) {
-  const { messages, input, setInput, sendMessage, dict, dir, isLoading, isRecording, startRecording, stopRecording } = useChat(artifact, locale);
+  const { messages, input, setInput, sendMessage, dict, dir, isLoading, isRecording, isConnecting, startRecording, stopRecording, room } = useChat(artifact, locale);
   const isAr = locale === "ar";
 
   const send = (msg: string) => {
@@ -18,6 +19,7 @@ export function RealTimeAIChat({ artifact, locale, embedded = false }: Props) {
 
   return (
     <div className={`flex flex-col ${embedded ? 'h-full w-full' : 'h-[600px] md:h-[calc(100vh)] border-l border-border sticky top-0'} bg-bg-card`} dir={dir}>
+      {room && <RoomAudioRenderer room={room} />}
       {!embedded && (
         <>
           <div className="p-4 border-b border-border flex items-center gap-2">
@@ -59,16 +61,16 @@ export function RealTimeAIChat({ artifact, locale, embedded = false }: Props) {
       <div className="p-4 border-t border-border bg-bg-primary">
         <div className="flex items-center gap-2">
           <button 
-            onMouseDown={startRecording}
-            onMouseUp={stopRecording}
-            onTouchStart={startRecording}
-            onTouchEnd={stopRecording}
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isConnecting}
             className={`p-2 rounded-full transition-colors ${
-              isRecording 
-                ? "bg-red-500 text-white animate-pulse" 
-                : "bg-bg-card text-text-secondary hover:text-gold"
+              isConnecting
+                ? "bg-yellow-500 text-white animate-pulse"
+                : isRecording 
+                  ? "bg-red-500 text-white animate-pulse" 
+                  : "bg-bg-card text-text-secondary hover:text-gold"
             }`}
-            title={isAr ? "اضغط باستمرار للتسجيل" : "Hold to record"}
+            title={isConnecting ? (isAr ? "جاري الاتصال..." : "Connecting...") : isAr ? (isRecording ? "إيقاف المكالمة" : "بدء المكالمة") : (isRecording ? "End Call" : "Start Call")}
           >
             <Mic className="w-5 h-5" />
           </button>
@@ -77,11 +79,11 @@ export function RealTimeAIChat({ artifact, locale, embedded = false }: Props) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && send(input)}
-            placeholder={isRecording ? (isAr ? 'جاري التسجيل...' : 'Recording...') : (dict.detail?.inputPlaceholder || (isAr ? 'رسالتك...' : 'Message...'))}
+            placeholder={isConnecting ? (isAr ? 'جاري الاتصال...' : 'Connecting...') : isRecording ? (isAr ? 'تحدث الآن، أنا أستمع...' : 'Speak now, listening...') : (dict.detail?.inputPlaceholder || (isAr ? 'رسالتك...' : 'Message...'))}
             className="flex-1 bg-bg-card border border-border rounded-full px-4 py-2 text-sm focus:outline-none focus:border-gold text-text-primary"
-            disabled={isLoading || isRecording}
+            disabled={isLoading || isRecording || isConnecting}
           />
-          <button onClick={() => send(input)} disabled={isLoading || isRecording} className="p-2 rounded-full bg-gold text-bg-primary disabled:opacity-50">
+          <button onClick={() => send(input)} disabled={isLoading || isRecording || isConnecting} className="p-2 rounded-full bg-gold text-bg-primary disabled:opacity-50">
             <Send className="w-5 h-5" />
           </button>
         </div>
