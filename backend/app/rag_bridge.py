@@ -68,6 +68,74 @@ class RAGStream(llm.LLMStream):
         self._livekit_llm = livekit_llm
 
     async def _run(self) -> None:
+        state = self._livekit_llm.visitor_state
+
+        # ---- Visitor State Gate ----
+        if state == "none":
+            # No visitor confirmed — stay completely silent
+            logger.info("RAGBridge: ignoring speech — visitor_state=none")
+            return
+
+        if state in ["asking", "asking_continue"]:
+            # Robot asked "Are you there?" OR "Do you want to continue?"
+            yes_words = [
+                "yes", "yeah", "yep", "sure", "ok", "okay", "yea", "continue",
+                "\u0646\u0639\u0645", "\u0622\u0647", "\u0623\u064a\u0648\u0647", "\u0627\u064a\u0648\u0647", "\u0627\u0647", "\u0623\u0647",
+                "\u0637\u0628\u0639\u0627", "\u0645\u0648\u062c\u0648\u062f", "\u0643\u0645\u0644", "\u0645\u0627\u0634\u064a", "\u0627\u0643\u064a\u062f", "\u062d\u0627\u0636\u0631"
+            ]
+            no_words = [
+                "no", "nope", "stop", "don't", "dont", "not now",
+                "\u0644\u0627", "\u0644\u0623", "\u0644\u0627\u0621", "\u0645\u0634", "\u0645\u0634 \u0639\u0627\u064a\u0632", "\u0628\u0644\u0627\u0634", "\u0648\u0642\u0641"
+            ]
+            user_text = self._last_user_msg.lower().strip()
+            confirmed = any(w in user_text for w in yes_words)
+            declined = any(w in user_text for w in no_words)
+
+            if confirmed:
+                self._livekit_llm.visitor_state = "active"
+                if state == "asking":
+                    logger.info("RAGBridge: visitor confirmed presence — switching to active, sending greeting")
+                    response_text = self._livekit_llm.greeting_text
+                else:
+                    logger.info("RAGBridge: visitor confirmed to continue — switching to active")
+                    locale = self._livekit_llm.fixed_locale or "ar"
+                    response_text = "\u062a\u0645\u0627\u0645\u060c \u0623\u0646\u0627 \u0645\u0639\u0627\u0643" if locale == "ar" else "Okay, I'm listening."
+
+                self._event_ch.send_nowait(
+                    llm.ChatChunk(
+                        id=f"rag-{uuid.uuid4().hex}",
+                        delta=llm.ChoiceDelta(content=response_text, role="assistant"),
+                    )
+                )
+            elif declined:
+                self._livekit_llm.visitor_state = "none"
+                locale = self._livekit_llm.fixed_locale or "ar"
+                response_text = "\u062a\u0645\u0627\u0645\u060c \u0647\u0633\u0643\u062a \u062f\u0644\u0648\u0642\u062a\u064a." if locale == "ar" else "Okay, I'll stop now."
+                logger.info("RAGBridge: visitor declined — switching to none")
+                self._event_ch.send_nowait(
+                    llm.ChatChunk(
+                        id=f"rag-{uuid.uuid4().hex}",
+                        delta=llm.ChoiceDelta(content=response_text, role="assistant"),
+                    )
+                )
+            else:
+                # Not a confirmation — ask again politely
+                locale = self._livekit_llm.fixed_locale or "ar"
+                if state == "asking":
+                    retry = "\u0647\u0644 \u0623\u0646\u062a \u0647\u0646\u0627\u061f" if locale == "ar" else "Are you still there?"
+                else:
+                    retry = "\u062a\u062d\u0628 \u0623\u0643\u0645\u0644\u061f" if locale == "ar" else "Do you want me to continue?"
+
+                logger.info("RAGBridge: no confirmation received, asking again")
+                self._event_ch.send_nowait(
+                    llm.ChatChunk(
+                        id=f"rag-{uuid.uuid4().hex}",
+                        delta=llm.ChoiceDelta(content=retry, role="assistant"),
+                    )
+                )
+            return  # Do not run RAG in this state
+
+        # state == "active" — full RAG pipeline
         # Build initial GraphState for the RAG pipeline
         initial_state: GraphState = {
             "original_query": self._last_user_msg,
@@ -100,6 +168,11 @@ class RAGStream(llm.LLMStream):
             full_answer = ""
             first_token_time = None
             async for chunk in generate_answer_stream_async(state):
+                # If vision closes the gate mid-generation, immediately halt the stream.
+                if self._livekit_llm.visitor_state != "active":
+                    logger.info("RAGBridge: visitor no longer active. Halting stream.")
+                    break
+
                 if chunk:
                     if first_token_time is None:
                         first_token_time = time.time()
@@ -163,6 +236,13 @@ class RAGBridge(llm.LLM):
         self.fixed_locale = fixed_locale
         self.room = room
         self.session_logger = session_logger
+        # Visitor gate controlled by the vision loop:
+        #   "none"             — no visitor, robot is completely silent
+        #   "asking"           — person detected, robot asked if they want help
+        #   "asking_continue"  — visitor looked away, robot asked whether to continue
+        #   "active"           — visitor confirmed, full RAG conversation is enabled
+        self.visitor_state: str = "none"
+        self.greeting_text: str = ""   # set by agent.py after locale is resolved
 
     def chat(
         self,

@@ -1,0 +1,18 @@
+{
+  "session_id": "museum-assistant-user-1781193217",
+  "locale": "en",
+  "start_time": "2026-06-11T18:54:00.428544",
+  "end_time": "2026-06-11T18:55:04.580465",
+  "total_duration_seconds": 64.15,
+  "total_turns": 1,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T18:54:26.807530",
+      "user_query": "['Tell me about ancient Egyptian.']",
+      "ai_response": "['We have many artifacts from ancient Egypt here. One interesting piece is the Block statue of Djed Khonsu Iou.ef Ankh, located in the Ancient Egyptian Antiquities hall. It's a statue of a priest holding symbols of power and wealth. Would you like to know more about it?']",
+      "latency_seconds": 6.498,
+      "generation_time_seconds": 6.614,
+      "relevance_score": 0.8
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "session_id": "museum-assistant-user-1781187294",
+  "locale": "en",
+  "start_time": "2026-06-11T17:15:13.420085",
+  "end_time": "2026-06-11T17:16:22.687256",
+  "total_duration_seconds": 69.27,
+  "total_turns": 1,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T17:15:39.165409",
+      "user_query": "['to the nearby Nelson Island.']",
+      "ai_response": "Nelson Island has a fascinating collection. You can find artifacts like catapult projectiles, loom weights, and a vase bearing the features of Bes in the Nelson Island Collection, showcase 34. Would you like to know more about the daily life of the people who lived there?",
+      "latency_seconds": 2.156,
+      "generation_time_seconds": 2.311,
+      "relevance_score": 1.0
+    }
+  ]
+}

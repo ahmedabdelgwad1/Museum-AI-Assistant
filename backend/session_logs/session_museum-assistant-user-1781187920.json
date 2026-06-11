@@ -1,0 +1,26 @@
+{
+  "session_id": "museum-assistant-user-1781187920",
+  "locale": "en",
+  "start_time": "2026-06-11T17:25:36.856614",
+  "end_time": "2026-06-11T17:26:42.734325",
+  "total_duration_seconds": 65.88,
+  "total_turns": 2,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T17:25:56.115275",
+      "user_query": "['Can you tell me about ancient Egyptian?']",
+      "ai_response": "['We have several ancient Egyptian artifacts here, like the block statue of Djed Khonsu Iou.ef Ankh in the Ancient Egyptian Antiquities hall. Would you like to know more about it?']",
+      "latency_seconds": 1.97,
+      "generation_time_seconds": 2.108,
+      "relevance_score": 0.8
+    },
+    {
+      "timestamp": "2026-06-11T17:26:13.757972",
+      "user_query": "['Yes, please.']",
+      "ai_response": "[\"The block statue of Djed Khonsu Iou.ef Ankh is a great example of ancient Egyptian art. It's a sculpture of a priest holding symbols of power and wealth, with hieroglyphic inscriptions on the back. Would you like to know more about the era it was made in?\"]",
+      "latency_seconds": 2.054,
+      "generation_time_seconds": 2.225,
+      "relevance_score": 0.8
+    }
+  ]
+}

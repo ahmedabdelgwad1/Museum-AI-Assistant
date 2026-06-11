@@ -1,0 +1,26 @@
+{
+  "session_id": "museum-assistant-user-1781187666",
+  "locale": "en",
+  "start_time": "2026-06-11T17:21:28.004083",
+  "end_time": "2026-06-11T17:22:49.505929",
+  "total_duration_seconds": 81.5,
+  "total_turns": 2,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T17:21:53.793363",
+      "user_query": "['Ancient Egyptian artifacts.']",
+      "ai_response": "['We have several artifacts from Ancient Egypt, such as the block statue of Djed Khonsu Iou.ef Ankh, located in the Ancient Egyptian Antiquities hall. Would you like to know more about it?']",
+      "latency_seconds": 2.482,
+      "generation_time_seconds": 2.586,
+      "relevance_score": 0.8
+    },
+    {
+      "timestamp": "2026-06-11T17:22:17.330833",
+      "user_query": "['Yes.']",
+      "ai_response": "[\"The block statue of Djed Khonsu Iou.ef Ankh is one of our notable pieces, found in the Karnak Temple. Would you like to know more about its discovery?\"]",
+      "latency_seconds": 2.074,
+      "generation_time_seconds": 2.237,
+      "relevance_score": 0.8
+    }
+  ]
+}

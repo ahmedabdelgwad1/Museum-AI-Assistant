@@ -1,0 +1,34 @@
+{
+  "session_id": "museum-assistant-user-1781195490",
+  "locale": "en",
+  "start_time": "2026-06-11T19:31:51.382887",
+  "end_time": "2026-06-11T19:33:04.549821",
+  "total_duration_seconds": 73.17,
+  "total_turns": 3,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T19:32:14.704095",
+      "user_query": "['Tell me about it and tell me what you think.']",
+      "ai_response": "['We have a variety of fascinating artifacts here. One that caught my attention is the Statue of Aphrodite, although its hall is currently unavailable. It's a beautiful sculpture with intricate details. The way Aphrodite is depicted, trying to remove her sandal while covering herself, is quite intriguing. What do you think about ancient sculptures like this one?']",
+      "latency_seconds": 2.995,
+      "generation_time_seconds": 3.289,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-11T19:32:19.442793",
+      "user_query": "['Have a good night.']",
+      "ai_response": "['You too, have a great night.']",
+      "latency_seconds": 1.916,
+      "generation_time_seconds": 1.982,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-11T19:32:27.743265",
+      "user_query": "['Cut to memory.']",
+      "ai_response": "I'm not sure about that based on my current info, but I can help with other museum topics. We do have an interesting piece, the Amulet in the shape of a heart, which is related to the concept of memory in ancient Egyptian culture. Would you like to know more about it?",
+      "latency_seconds": 1.62,
+      "generation_time_seconds": 1.795,
+      "relevance_score": 0.0
+    }
+  ]
+}

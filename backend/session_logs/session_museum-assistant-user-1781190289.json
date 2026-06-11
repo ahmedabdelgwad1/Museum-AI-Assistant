@@ -1,0 +1,26 @@
+{
+  "session_id": "museum-assistant-user-1781190289",
+  "locale": "en",
+  "start_time": "2026-06-11T18:05:09.779625",
+  "end_time": "2026-06-11T18:06:09.482633",
+  "total_duration_seconds": 59.7,
+  "total_turns": 2,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T18:05:24.173476",
+      "user_query": "[\"I'm not going to lie to you.\"]",
+      "ai_response": "Hello. That's very honest of you. What brings you to the museum today? Would you like to explore some of our exhibits?",
+      "latency_seconds": 3.765,
+      "generation_time_seconds": 3.886,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-11T18:05:44.651024",
+      "user_query": "['Yep, go ahead.']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 2.689,
+      "generation_time_seconds": 2.689,
+      "relevance_score": 1.0
+    }
+  ]
+}

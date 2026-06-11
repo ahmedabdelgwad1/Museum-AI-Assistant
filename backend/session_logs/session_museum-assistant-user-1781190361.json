@@ -1,0 +1,18 @@
+{
+  "session_id": "museum-assistant-user-1781190361",
+  "locale": "en",
+  "start_time": "2026-06-11T18:06:21.605913",
+  "end_time": "2026-06-11T18:07:19.523172",
+  "total_duration_seconds": 57.92,
+  "total_turns": 1,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T18:06:48.719253",
+      "user_query": "['Tell me about attention to gypsum.']",
+      "ai_response": "Sorry, the system is busy. Please try again in a moment.",
+      "latency_seconds": 2.487,
+      "generation_time_seconds": 2.487,
+      "relevance_score": 0.0
+    }
+  ]
+}

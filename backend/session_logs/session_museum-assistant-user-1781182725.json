@@ -1,0 +1,18 @@
+{
+  "session_id": "museum-assistant-user-1781182725",
+  "locale": "en",
+  "start_time": "2026-06-11T15:59:04.360114",
+  "end_time": "2026-06-11T16:00:02.695368",
+  "total_duration_seconds": 58.34,
+  "total_turns": 1,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T15:59:32.523592",
+      "user_query": "['Tell me about important things.']",
+      "ai_response": "We have many interesting artifacts here. One notable piece is the 'Pot strainer' with floral and geometrical motifs, located in the Islamic Antiquities hall, showcase 32. Would you like to know more about the era it was made in?",
+      "latency_seconds": 2.621,
+      "generation_time_seconds": 2.791,
+      "relevance_score": 0.5
+    }
+  ]
+}

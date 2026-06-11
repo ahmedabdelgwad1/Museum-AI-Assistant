@@ -1,0 +1,18 @@
+{
+  "session_id": "museum-assistant-user-1781194626",
+  "locale": "en",
+  "start_time": "2026-06-11T19:17:29.549093",
+  "end_time": "2026-06-11T19:18:19.594886",
+  "total_duration_seconds": 50.05,
+  "total_turns": 1,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T19:17:51.799353",
+      "user_query": "[\"In my body I'll chant the same thing.\"]",
+      "ai_response": "That's a interesting phrase. It reminds me of the Statuette of a harp player in showcase 18 of the Greco-Roman Antiquities hall. Music was a vital part of ancient Greek life, and they believed it had the power to communicate with the gods. Would you like to know more about the significance of music in ancient Greek culture?",
+      "latency_seconds": 2.23,
+      "generation_time_seconds": 2.427,
+      "relevance_score": 0.4
+    }
+  ]
+}

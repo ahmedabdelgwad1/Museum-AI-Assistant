@@ -1,0 +1,18 @@
+{
+  "session_id": "museum-assistant-user-1781188349",
+  "locale": "en",
+  "start_time": "2026-06-11T17:32:51.177589",
+  "end_time": "2026-06-11T17:33:49.456321",
+  "total_duration_seconds": 58.28,
+  "total_turns": 1,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T17:33:14.352960",
+      "user_query": "['Tell me about ancient Egypt.']",
+      "ai_response": "['Ancient Egypt was a fascinating civilization. We have many artifacts here, like the Block statue of Djed Khonsu Iou.ef Ankh in the Ancient Egyptian Antiquities hall. Would you like to know more about the era it was made in?']",
+      "latency_seconds": 2.611,
+      "generation_time_seconds": 2.772,
+      "relevance_score": 0.8
+    }
+  ]
+}

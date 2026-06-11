@@ -1,0 +1,26 @@
+{
+  "session_id": "museum-assistant-user-1781196095",
+  "locale": "en",
+  "start_time": "2026-06-11T19:41:57.982905",
+  "end_time": "2026-06-11T19:43:02.574685",
+  "total_duration_seconds": 64.59,
+  "total_turns": 2,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T19:42:45.297844",
+      "user_query": "['Tell me about Enchant Egyptian.']",
+      "ai_response": "I'm not sure about that based on my current info, but I can help with other museum topics. Would you like to know about the Ancient Egyptian Antiquities we have on display?",
+      "latency_seconds": 2.09,
+      "generation_time_seconds": 2.18,
+      "relevance_score": 0.6
+    },
+    {
+      "timestamp": "2026-06-11T19:42:54.936614",
+      "user_query": "['about ancient Egyptians.']",
+      "ai_response": "We have several artifacts from Ancient Egypt. You can see the block statue of Djed Khonsu Iou.ef Ankh in the Ancient Egyptian Antiquities hall. Would you like to know more about the era it was made in?",
+      "latency_seconds": 1.767,
+      "generation_time_seconds": 1.899,
+      "relevance_score": 0.8
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "session_id": "museum-assistant-user-1781183128",
+  "locale": "en",
+  "start_time": "2026-06-11T16:05:47.206150",
+  "end_time": "2026-06-11T16:07:49.492469",
+  "total_duration_seconds": 122.29,
+  "total_turns": 1,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T16:06:48.467449",
+      "user_query": "['Tell me about the important exhibits in ancient Egypt.']",
+      "ai_response": "We have some fascinating exhibits from Ancient Egypt. One of the notable ones is the Block statue of Nes-Amun, located in the Ancient Egyptian Antiquities hall. It's a sculpture of a priest serving the god Monthu, and it features a relief of the god Osiris. We also have a Statuette of Imhotep, a famous architect and vizier of King Djoser, which is a beautiful bronze piece. Would you like to know more about the era these artifacts were created in?",
+      "latency_seconds": 2.416,
+      "generation_time_seconds": 2.809,
+      "relevance_score": 0.8
+    }
+  ]
+}

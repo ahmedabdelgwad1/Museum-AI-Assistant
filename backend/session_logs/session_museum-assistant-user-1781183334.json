@@ -1,0 +1,42 @@
+{
+  "session_id": "museum-assistant-user-1781183334",
+  "locale": "en",
+  "start_time": "2026-06-11T16:09:13.575958",
+  "end_time": "2026-06-11T16:11:14.447671",
+  "total_duration_seconds": 120.87,
+  "total_turns": 4,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T16:09:35.131070",
+      "user_query": "[\"I don't want to talk about this.\"]",
+      "ai_response": "That's perfectly fine. If you're ready to move on, I'd be happy to show you some of our fascinating exhibits here at the museum. Would you like to explore something in particular, like ancient Egyptian antiquities or perhaps Islamic artifacts?",
+      "latency_seconds": 2.996,
+      "generation_time_seconds": 3.199,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-11T16:09:40.864269",
+      "user_query": "['Tell me about the important exhibits in Nelson Island.']",
+      "ai_response": "We have several interesting exhibits from Nelson Island in our museum. You can find a Catapult projectile, Loom weights, a Brazier, and a Vase bearing the features of Bes, all located in the Nelson Island Collection, showcase 34. Would you like to know more about any of these artifacts?",
+      "latency_seconds": 1.395,
+      "generation_time_seconds": 1.58,
+      "relevance_score": 0.8
+    },
+    {
+      "timestamp": "2026-06-11T16:10:12.772630",
+      "user_query": "['He stopped and he went away. He stopped and he went away. Come in and sit down. What is the name of the road?']",
+      "ai_response": "I'm not sure about that based on my current info, but I can help with other museum topics. Would you like to know more about the Nelson Island Collection, perhaps the Catapult projectile or the Vase bearing the features of Bes?",
+      "latency_seconds": 2.163,
+      "generation_time_seconds": 2.265,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-11T16:10:49.266368",
+      "user_query": "['There is a problem with the ID. The police need to be more careful. And the police need to be more careful. Can you please tell us what happened?']",
+      "ai_response": "I'm not sure about that based on my current info, but I can help with other museum topics. We have some interesting artifacts here, like the Gravestone in the Islamic Antiquities hall. Would you like to know more about it?",
+      "latency_seconds": 3.072,
+      "generation_time_seconds": 3.232,
+      "relevance_score": 0.0
+    }
+  ]
+}

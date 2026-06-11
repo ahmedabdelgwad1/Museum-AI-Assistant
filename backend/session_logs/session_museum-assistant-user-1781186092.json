@@ -1,0 +1,34 @@
+{
+  "session_id": "museum-assistant-user-1781186092",
+  "locale": "en",
+  "start_time": "2026-06-11T16:55:12.234847",
+  "end_time": "2026-06-11T16:57:39.437011",
+  "total_duration_seconds": 147.2,
+  "total_turns": 3,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T16:55:40.576963",
+      "user_query": "['How do you...']",
+      "ai_response": "It seems like you started to ask a question, but it got cut off. Could you please finish asking how I can help you with something in the museum? Would you like to know more about a specific artifact or exhibit?",
+      "latency_seconds": 3.438,
+      "generation_time_seconds": 3.588,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-11T16:55:43.181800",
+      "user_query": "[\"What's up?\"]",
+      "ai_response": "Hello. Not much, just ready to help you explore our museum's amazing artifacts, like the mosaic depicting two wrestlers in the Antiquities of the BA Site hall. Would you like to know more about it?",
+      "latency_seconds": 2.049,
+      "generation_time_seconds": 2.205,
+      "relevance_score": 0.0
+    },
+    {
+      "timestamp": "2026-06-11T16:56:55.089876",
+      "user_query": "['Out ancient in Egypt.']",
+      "ai_response": "We have several ancient Egyptian artifacts here. One of them is the block statue of Djed Khonsu Iou.ef Ankh, located in the Ancient Egyptian Antiquities hall. Would you like to know more about it?",
+      "latency_seconds": 1.812,
+      "generation_time_seconds": 1.94,
+      "relevance_score": 0.8
+    }
+  ]
+}

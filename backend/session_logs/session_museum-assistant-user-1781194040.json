@@ -1,0 +1,26 @@
+{
+  "session_id": "museum-assistant-user-1781194040",
+  "locale": "en",
+  "start_time": "2026-06-11T19:07:46.895322",
+  "end_time": "2026-06-11T19:08:28.320100",
+  "total_duration_seconds": 41.42,
+  "total_turns": 2,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T19:08:17.953257",
+      "user_query": "['In short, the Egyptian police.']",
+      "ai_response": "I'm not sure about that based on my current info, but I can help with other museum topics. Would you like to know more about the artifacts in our Islamic Antiquities hall?",
+      "latency_seconds": 4.526,
+      "generation_time_seconds": 4.639,
+      "relevance_score": 0.4
+    },
+    {
+      "timestamp": "2026-06-11T19:08:28.320089",
+      "user_query": "['Enchante James.']",
+      "ai_response": "Hello. It's nice to meet you. Would you like to explore our exhibits here at the museum?",
+      "latency_seconds": 2.573,
+      "generation_time_seconds": 2.683,
+      "relevance_score": 0.0
+    }
+  ]
+}

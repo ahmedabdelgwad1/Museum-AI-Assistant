@@ -1,0 +1,26 @@
+{
+  "session_id": "museum-assistant-user-1781190522",
+  "locale": "en",
+  "start_time": "2026-06-11T18:09:04.710484",
+  "end_time": "2026-06-11T18:10:12.753309",
+  "total_duration_seconds": 68.04,
+  "total_turns": 2,
+  "turns": [
+    {
+      "timestamp": "2026-06-11T18:09:34.076421",
+      "user_query": "['Can you tell me about ancient Egyptian?']",
+      "ai_response": "['We have many artifacts from Ancient Egypt here. You can see the block statue of Djed Khonsu Iou.ef Ankh in the Ancient Egyptian Antiquities hall. Would you like to know more about it?']",
+      "latency_seconds": 2.09,
+      "generation_time_seconds": 2.232,
+      "relevance_score": 0.8
+    },
+    {
+      "timestamp": "2026-06-11T18:09:49.548288",
+      "user_query": "[\"I'm sorry, I'm sorry.\"]",
+      "ai_response": "No need to apologize. Is there something specific about Ancient Egypt you'd like to know or see?",
+      "latency_seconds": 1.844,
+      "generation_time_seconds": 1.935,
+      "relevance_score": 0.8
+    }
+  ]
+}
