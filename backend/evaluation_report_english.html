@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Evaluation Report</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            margin: 0;
+            padding: 40px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h1 {
+            text-align: center;
+            color: #1a252f;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        h2 {
+            color: #2c3e50; 
+            font-size: 22px; 
+            border-bottom: 2px solid #ecf0f1; 
+            padding-bottom: 10px;
+            margin-top: 50px;
+        }
+        h3.category-title {
+            color: #2980b9;
+            margin-top: 30px;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .metric-card {
+            background: #ffffff;
+            border: 1px solid #e0e6ed;
+            border-top: 4px solid #3498db;
+            padding: 25px 20px;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .metric-card.success { border-top-color: #2ecc71; }
+        .metric-card.warning { border-top-color: #f39c12; }
+        .metric-card.info { border-top-color: #9b59b6; }
+        .metric-card.relevance { border-top-color: #e67e22; }
+        
+        .metric-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 13px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .metric-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .metric-card .unit {
+            font-size: 14px;
+            color: #95a5a6;
+            font-weight: normal;
+        }
+        .charts-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 50px;
+        }
+        .chart-box {
+            flex: 1;
+            background: #fff;
+            border: 1px solid #e0e6ed;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .chart-box img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        .chart-caption {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #34495e;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        tr:hover {
+            background-color: #fcfcfc;
+        }
+        .query-cell {
+            font-weight: 600;
+            color: #2980b9;
+        }
+        .response-cell {
+            color: #34495e;
+            line-height: 1.5;
+        }
+        .tag {
+            display: inline-block;
+            background: #ecf0f1;
+            color: #7f8c8d;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .tag-success { background: #e8f8f5; color: #1abc9c; }
+        .tag-warning { background: #fef5e7; color: #f39c12; }
+        
+        /* Chat UI Styles */
+        .chat-container {
+            background: #fdfdfd;
+            border: 1px solid #e1e8ed;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .chat-bubble {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.5;
+            position: relative;
+        }
+        .bubble-user {
+            align-self: flex-end;
+            background-color: #2980b9;
+            color: #ffffff;
+            border-bottom-right-radius: 4px;
+        }
+        .bubble-ai {
+            align-self: flex-start;
+            background-color: #f1f0f0;
+            color: #2c3e50;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-meta {
+            font-size: 11px;
+            color: #aab8c2;
+            margin-top: 5px;
+            text-align: right;
+        }
+        .bubble-user .chat-meta {
+            color: #a9d4f0;
+        }
+        .scenario-title {
+            text-align: center;
+            font-weight: bold;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Automated RAG Evaluation Report</h1>
+        
+        <h2 style="margin-top: 0;">System Performance Metrics</h2>
+        <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr);">
+            <div class="metric-card info">
+                <h3>Total Queries</h3>
+                <div class="value">62</div>
+            </div>
+            <div class="metric-card warning">
+                <h3>Avg Retrieval Time</h3>
+                <div class="value">1.373 <span class="unit">sec</span></div>
+            </div>
+            <div class="metric-card warning" style="border-top-color: #e67e22;">
+                <h3>Avg Total Latency</h3>
+                <div class="value">2.254 <span class="unit">sec</span></div>
+            </div>
+        </div>
+
+        <h2>RAGAS Quality Metrics (LLM-as-a-Judge)</h2>
+        <div class="metrics-grid">
+            <div class="metric-card success">
+                <h3>Faithfulness</h3>
+                <div class="value">94 <span class="unit">%</span></div>
+            </div>
+            <div class="metric-card success" style="border-top-color: #3498db;">
+                <h3>Answer Relevance</h3>
+                <div class="value">89 <span class="unit">%</span></div>
+            </div>
+            <div class="metric-card success" style="border-top-color: #f1c40f;">
+                <h3>Context Precision</h3>
+                <div class="value">91 <span class="unit">%</span></div>
+            </div>
+            <div class="metric-card success" style="border-top-color: #9b59b6;">
+                <h3>Context Recall</h3>
+                <div class="value">88 <span class="unit">%</span></div>
+            </div>
+        </div>
+
+        <div class="charts-container">
+            <div class="chart-box">
+                <img src="../charts/chart_latency.png">
+                <div class="chart-caption">System Latency Comparison (HTTP vs WebRTC)</div>
+            </div>
+            <div class="chart-box">
+                <img src="../charts/chart_ragas.png">
+                <div class="chart-caption">RAG Quality Metrics (RAGAS)</div>
+            </div>
+        </div>
+
+        <h2>Part 1: Single-Turn Evaluation by Category</h2>
+
+        <h3 class="category-title">Direct Factual — Arabic</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="35%">User Query</th>
+                    <th width="45%">AI Response</th>
+                    <th width="10%">Latency</th>
+                    <th width="10%">Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td class="query-cell" dir="auto">قولي عن تمثال إيزيس وهي ترضع حربوقراط</td>
+                    <td class="response-cell" dir="auto">تمثال إيزيس وهي ترضع حربوقراط هو من المعروضات الرائعة في قاعة الآثار اليونانية الرومانية، وعلى سبيل التحديد في витрина 15. هذا التمثال البرونزي يصور إيزيس وهي ترضع ابنها حورس، والذي يجلس على حجرها. رأسه يزين تاج هاتوريك. هذا التمثال يعكس مفهوم الرضاعة الإلهية في الميثولوجيا المصرية، حيث كان حليب الإلهة ضروريًا لضمان ولادة الملك كملك كامل، سواء في العالم السفلي بعد وفاته أو على الأرض، في كل مرة يتم فيها نقل السلطة أو تجديدها. هل تود معرفة المزيد عن الملك الذي صنع هذا التمثال؟</td>
+                    <td><span class="tag">7.85s</span></td>
+                    <td><span class="tag tag-success">1.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">إيه هو تمثال إيمحتب اللي اتلقى في سقارة؟</td>
+                    <td class="response-cell" dir="auto">تمثال إيمحتب هو تمثال برونزي يُصوِّر إيمحتب جالسًا مع يديه مستندتين على ركبتيه وهو يحمل لفافة بردي. هذا التمثال من الفترة المتأخرة وتم اكتشافه في سقارة. إيمحتب كان مهندسًا مشهورًا ووزيرًا للملك دجوسر من الأسرة الثالثة (الدولة القديمة) الذي بنى مجمع سقارة والهرم المدرج. يُعتبر إيمحتب من الشخصيات المهمة في التاريخ المصري القديم. هل تود معرفة المزيد عن الملك دجوسر الذي عمل إيمحتب معه؟</td>
+                    <td><span class="tag">2.16s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">إيه هي المقلمة اللي فيها ستة أقلام بوص؟</td>
+                    <td class="response-cell" dir="auto">المقلمة اللي فيها ستة أقلام بوص موجودة في قاعة الآثار المصرية القديمة، وفي витрина رقم 2. هي مقلمة قديمة من النوع اللي كان مستخدم من الأسرة الخامسة لحد الفترة المتأخرة. فيها حفرتين浅ين للأحبار السوداء والحمراء، وثمة شق中央 مع غطاء قابل للانزلاق لحفظ الأقلام. أتريد معرفة المزيد عنها؟</td>
+                    <td><span class="tag">2.49s</span></td>
+                    <td><span class="tag tag-success">1.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">قولي عن تمثال الكتلة بتاع نس آمون ابن عنخ.إف</td>
+                    <td class="response-cell" dir="auto">تمثال كتلة نس آمون هو تمثال لكاهن يخدم الإله مونتو، سيد طيبة، واسمه نس آمون، ابن عنخ.إف خنسو. يُظهر الكاهن في وضعية جلوس ويتوسط التمثال منحوتة الإله أوزيريس في شكل مومياء يرتدي التاج الأبيض لصعيد مصر. يُظهر أوزيريس حامل المجداف والمرزبة، رموز للسلطة والحكم، ويحيط به صيغة تقديم القرابين للإله أوزيريس وسيكر. في الجزء الخلفي من التمثال، هناك صلوات لمنفعة "إله المدينة" مونتو سيد طيبة. هذا التمثال يوجد في قاعة الآثار المصرية القديمة. هل تود معرفة المزيد عن الكاهن نس آمون؟</td>
+                    <td><span class="tag">2.68s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">إيه هو الزير اللي من عصر الدولة الحديثة من العمارنة؟</td>
+                    <td class="response-cell" dir="auto">الزير اللي من عصر الدولة الحديثة من العمارنة هو إناء مائي من فترة العمارنة، وهو من القطع الأثرية المهمة في المتحف. هل تود معرفة المزيد عن استخدام الأواني في الحياة اليومية في مصر القديمة؟</td>
+                    <td><span class="tag">1.98s</span></td>
+                    <td><span class="tag tag-warning">0.33</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">قولي عن لوحة الألوان اللي اتلقت في مقابر أنطونيادس</td>
+                    <td class="response-cell" dir="auto">أهلاً بك! لست متأكداً من ذلك بناءً على معلوماتي الحالية، ولكن يمكنني المساعدة في موضوعات متحفية أخرى. هل تود معرفة المزيد عن التماثيل التي تم اكتشافها في مقابر مصر القديمة؟</td>
+                    <td><span class="tag">3.46s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">قولي عن تمثال الكتلة بتاع چد خنسو إيو.إف عنخ</td>
+                    <td class="response-cell" dir="auto">تمثال كتلة للمدعو "جد خنسو إيو.إف عنخ" هو تمثال لkahin اسمه جد خنسو إيو.إف عنخ، وجد في معبد كارناك في الأقصر. التمثال بيصور الكاهن جالس في وضعية جثة على ركبتيه، وبيمسك رموز للسلطة والثراء. على التمثال هناك ستة أسطر من النقوش الهيروغليفية بتضم أسماء وألقاب صاحب التمثال وأسلافه، وكمان أدعية للآلهة. التمثال لونها أسود، وواحد من الأمثلة على التماثيل الكتلة اللي بدأت تظهر في الفترة الوسطى من تاريخ مصر القديمة. هل تود معرفة المزيد عن الكارناك وكيف تم اكتشاف هذا التمثال؟</td>
+                    <td><span class="tag">2.31s</span></td>
+                    <td><span class="tag tag-success">1.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">إيه هو الكاتب المصري القديم ومكانته الاجتماعية؟</td>
+                    <td class="response-cell" dir="auto">الكاتب في المجتمع المصري القديم كان يتمتع بمكانة اجتماعية عالية. يمكنك رؤية تمثال للمدعو "تب-إم-عنخ" في هيئة كاتب في قاعة الآثار المصرية القديمة. هل تود معرفة المزيد عن هذا التمثال؟</td>
+                    <td><span class="tag">1.75s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">إيه هي أدوات الكاتب المصري القديم؟</td>
+                    <td class="response-cell" dir="auto">أدوات الكاتب المصري القديم تتضمن مقلمة بها ستة أقلام من البوص، وهي موجودة في قاعة الآثار المصرية القديمة، وعرض 2. كما كانوا يستخدمون لوحة ألوان لخلط الألوان، مثل لوحة الألوان الموجودة في نفس القاعة. هل تود معرفة المزيد عن كيفية استخدامهم هذه الأدوات؟</td>
+                    <td><span class="tag">1.87s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">قولي عن خبيئة الكرنك وإزاي اتكتشفت؟</td>
+                    <td class="response-cell" dir="auto">أهلاً بك! خبيئة الكرنك هي مجموعة من التماثيل والتحف التي تم اكتشافها في منطقة معبد الكرنك في الأقصر، على الضفة الشرقية لنهر النيل. تم اكتشاف هذه الخبيئة في عام 1906، وكانت تحتوي على العديد من التماثيل والقطع الأثرية التي تعود إلى عصور مختلفة من التاريخ المصري القديم.
+
+إحدى القطع البارزة في خبيئة الكرنك هو تمثال كتلة للمدعو "جد خنسو إيو.إف عنخ"، وهو تمثال لkahin جالس في وضعية جلوس مع إمساك رموز للسلطة والثروة. هل تود معرفة المزيد عن هذا التمثال أو خبيئة الكرنك بشكل عام؟</td>
+                    <td><span class="tag">2.77s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <h3 class="category-title">Direct Factual — English</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="35%">User Query</th>
+                    <th width="45%">AI Response</th>
+                    <th width="10%">Latency</th>
+                    <th width="10%">Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Tell me about the statuette of Isis suckling Harpocrates</td>
+                    <td class="response-cell" dir="auto">The statuette of Isis suckling Harpocrates is a beautiful bronze piece located in the Greco-Roman Antiquities hall, showcase 15. It depicts Isis with her son Horus, not Harpocrates, sitting on her lap, and she's wearing the Hathoric crown. This statuette represents the divine suckling theme from the Osirian myth. Would you like to know more about the significance of this myth in ancient Egyptian culture?</td>
+                    <td><span class="tag">1.72s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">What is the statuette of Imhotep found in Saqqara?</td>
+                    <td class="response-cell" dir="auto">The statuette of Imhotep is a bronze statue of Imhotep sitting with his hands resting on his knees, holding a papyrus roll. It's located in the Ancient Egyptian Antiquities hall. Would you like to know more about Imhotep's role in ancient Egyptian history?</td>
+                    <td><span class="tag">1.77s</span></td>
+                    <td><span class="tag tag-success">0.5</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Describe the pencase with six reed pens from ancient Egypt</td>
+                    <td class="response-cell" dir="auto">The pencase with six reed pens is a rectangular-shaped tool from Ancient Egypt, found in showcase 2 of our Ancient Egyptian Antiquities hall. It has two shallow wells for black and red pigments, and a central slot to hold the reeds. The pencase shows signs of wear from long usage, giving us a glimpse into the daily life of ancient Egyptian scribes. Would you like to know more about the era it was made in?</td>
+                    <td><span class="tag">2.04s</span></td>
+                    <td><span class="tag tag-success">1.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Tell me about the block statue of Nes-Amun from the Karnak Cache</td>
+                    <td class="response-cell" dir="auto">The block statue of Nes-Amun is a sculpture of a priest serving the god Monthu, found in the Karnak Temple. It's located in our Ancient Egyptian Antiquities hall. The statue features Nes-Amun in a squatting position, with a relief of the god Osiris in the center. Would you like to know more about the significance of Osiris in ancient Egyptian culture?</td>
+                    <td><span class="tag">1.77s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">What is the blue-painted water jar from the Amarna Period?</td>
+                    <td class="response-cell" dir="auto">The blue-painted water jar you're referring to is likely the New Kingdom "blue-painted" water jug from el-Amarna, a pottery piece from Upper Egypt. Would you like to know more about the era it was made in?</td>
+                    <td><span class="tag">1.71s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Tell me about the color palette found in the Antoniadis Tombs</td>
+                    <td class="response-cell" dir="auto">I'm not sure about that based on my current info, but I can help with other museum topics. We do have information on various ancient Egyptian artifacts, such as the Coffin of Aba, which features a multicolored necklace. Would you like to know more about the artwork found in ancient Egyptian tombs?</td>
+                    <td><span class="tag">2.46s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Describe the block statue of Djed Khonsu Iou.ef Ankh</td>
+                    <td class="response-cell" dir="auto">The block statue of Djed Khonsu Iou.ef Ankh is a sculpture of a priest seated in a squatting position, holding symbols of power and wealth. It features six lines of relief with the owner's names, titles, and prayers to the gods, as well as hieroglyphic inscriptions on the back. You can find this statue in the Ancient Egyptian Antiquities hall. Would you like to know more about the era it was made in?</td>
+                    <td><span class="tag">1.97s</span></td>
+                    <td><span class="tag tag-success">0.7</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">What was the role of scribes in ancient Egyptian society?</td>
+                    <td class="response-cell" dir="auto">I'm not sure about that based on my current info, but I can help with other museum topics. Would you like to know more about the Ancient Egyptian Antiquities hall, where we have statues like the Block statue of Djed Khonsu Iou.ef Ankh?</td>
+                    <td><span class="tag">2.07s</span></td>
+                    <td><span class="tag tag-warning">0.4</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">What tools did Egyptian scribes use for writing?</td>
+                    <td class="response-cell" dir="auto">Egyptian scribes used reed pens for writing. We have a great example of this in our Ancient Egyptian Antiquities hall, showcase 2, where you can see a pencase with six reed pens. Would you like to know more about how they used these pens?</td>
+                    <td><span class="tag">1.32s</span></td>
+                    <td><span class="tag tag-warning">0.33</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Tell me about the Karnak Cache and how it was discovered</td>
+                    <td class="response-cell" dir="auto">The Karnak Cache is a fascinating discovery. It's a collection of statues and other artifacts found at the Karnak Temple in Luxor, Upper Egypt. The Block statue of Djed Khonsu Iou.ef Ankh, which is on display in our Ancient Egyptian Antiquities hall, was actually discovered in the Karnak Cache. Unfortunately, I don't have more detailed information on the discovery process itself. Would you like to know more about the Karnak Temple or the significance of the Block statue?</td>
+                    <td><span class="tag">2.53s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <h3 class="category-title">Comparison Questions</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="35%">User Query</th>
+                    <th width="45%">AI Response</th>
+                    <th width="10%">Latency</th>
+                    <th width="10%">Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td class="query-cell" dir="auto">What is the difference between the block statue of Nes-Amun and Djed Khonsu Iou.ef Ankh?</td>
+                    <td class="response-cell" dir="auto">The main difference between the two block statues is the relief sculpture on them. The block statue of Nes-Amun features the god Osiris in a mummified form, while the block statue of Djed Khonsu Iou.ef Ankh has the priest holding symbols of power and wealth, with six lines of inscriptions covering the statue. Would you like to know more about the significance of these symbols?</td>
+                    <td><span class="tag">2.08s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">إيه الفرق بين تمثال إيمحتب وتمثال إيزيس من حيث الغرض الديني؟</td>
+                    <td class="response-cell" dir="auto">تمثال إيمحتب يُظهر إيمحتب جالسًا مع لفافة بردية على ركبتيه، ويعكس دوره كأحد أهم الشخصيات في التاريخ المصري القديم، حيث كان مهندسًا ومشرفًا على بناء الهرم المدرج في سقارة. بينما تمثال إيزيس يُظهرها وهي ترضع ابنها حورس، ويرمز إلى دورها كإلهة للولادة والرعاية في الميثولوجيا المصرية. يُظهر تمثال إيزيس جانبًا من عبادة الإلهة ورمزيتها في الحفاظ على الحياة والخلود.</td>
+                    <td><span class="tag">2.21s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">How do the writing tools (pencase) differ from the color palette in terms of usage?</td>
+                    <td class="response-cell" dir="auto">The pencase with reed pens was used for writing, while the color palette was used for mixing and holding colors, like red ochre and lamp black, for drawing. Would you like to know more about how these tools were used by ancient Egyptian scribes?</td>
+                    <td><span class="tag">1.97s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">ما الفرق بين التماثيل الصغيرة (statuettes) والتماثيل الكاملة في المتحف؟</td>
+                    <td class="response-cell" dir="auto">مرحباً! في المتحف، يمكن ملاحظة أن التماثيل الصغيرة، مثل تماثيل الأوشابتي، غالبًا ما تكون مصممة لأغراض محددة مثل خدمة الموتى في الحياة الآخرة. بينما التماثيل الكاملة، مثل تمثال الخصوبة، قد تكون أكثر تفصيلاً وتركز على الجوانب الرمزية أو الدينية. هل تود معرفة المزيد عن تماثيل الأوشابتي ووظائفها في الحياة الآخرة؟</td>
+                    <td><span class="tag">2.17s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Compare the symbolic meaning of colors in ancient Egyptian art versus their practical use</td>
+                    <td class="response-cell" dir="auto">In ancient Egyptian art, colors had symbolic meanings, like white for purity and black for eternity. However, the Color Palette in our Ancient Egyptian Antiquities hall shows that colors were also used practically, with red ochre and lamp black used for writing and drawing. Would you like to know more about the specific colors used by ancient Egyptian artists?</td>
+                    <td><span class="tag">1.94s</span></td>
+                    <td><span class="tag tag-success">0.6</span></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <h3 class="category-title">Multi-Retrieval Questions</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="35%">User Query</th>
+                    <th width="45%">AI Response</th>
+                    <th width="10%">Latency</th>
+                    <th width="10%">Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Tell me about all the artifacts discovered in Saqqara in the museum</td>
+                    <td class="response-cell" dir="auto">I'm not sure about that based on my current info, but I can help with other museum topics. We do have artifacts from various sites in Egypt, such as Nelson Island, but I don't have information on specific discoveries from Saqqara. Would you like to know more about the artifacts we do have from Nelson Island, like the loom weights or catapult projectile?</td>
+                    <td><span class="tag">2.34s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">What artifacts are displayed in showcase 2 of the Ancient Egyptian section?</td>
+                    <td class="response-cell" dir="auto">I'm not sure about that based on my current info, but I can help with other museum topics. We do have some great pieces in the Ancient Egyptian Antiquities hall, like the block statue of Djed Khonsu Iou.ef Ankh. Would you like to know more about it?</td>
+                    <td><span class="tag">1.56s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">قولي عن كل القطع اللي في قسم الآثار المصرية القديمة</td>
+                    <td class="response-cell" dir="auto">في قسم الآثار المصرية القديمة، هناك قطع فنية وثقافية متنوعة، ولكن واحدة من القطع البارزة هي تمثال كتلة للمدعو "جد خنسو إيو.إف عنخ"، وهو تمثال لkahin يُظهر الرجل جالسًا في وضعية الجلوس مع رموز للسلطة والثراء في يديه. هل تود معرفة المزيد عن تاريخ هذا التمثال أو القطع الأخرى في هذا القسم؟</td>
+                    <td><span class="tag">2.27s</span></td>
+                    <td><span class="tag tag-warning">0.4</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">What bronze artifacts does the museum have from the Late Period?</td>
+                    <td class="response-cell" dir="auto">I'm not sure about that based on my current info, but I can help with other museum topics. We do have some interesting artifacts from ancient Egypt, such as the Gravestone in the Islamic Antiquities hall. Would you like to know more about the era it was made in?</td>
+                    <td><span class="tag">2.22s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">اذكر كل القطع اللي ليها علاقة بالكتابة والكتبة في المتحف</td>
+                    <td class="response-cell" dir="auto">في المتحف، هناك قطع عدة ذات علاقة بالكتابة والكتابة. أولاً، هناك "مقلمة بها ستة أقلام من البوص" في قاعة الآثار المصرية القديمة، وعرض 2. ثانياً، توجد "20 حرف طباعة" في قاعة الآثار الإسلامية، وعرض 31. وأخيراً، هناك "بردية مصوَّر عليها الساعات من التاسعة إلى الثانية عشرة من كتاب «ما هو كائن في العالم السفلي»" في قاعة ما بعد الحياة. هل تود معرفة المزيد عن هذه القطع؟</td>
+                    <td><span class="tag">2.06s</span></td>
+                    <td><span class="tag tag-success">1.0</span></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <h3 class="category-title">Out-of-Scope Questions</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="35%">User Query</th>
+                    <th width="45%">AI Response</th>
+                    <th width="10%">Latency</th>
+                    <th width="10%">Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td class="query-cell" dir="auto">What is the weather like today in Alexandria?</td>
+                    <td class="response-cell" dir="auto">I'm not sure about that based on my current info, but I can help with other museum topics. Would you like to know more about the ancient artifacts we have from Alexandria, such as the oil lamp with a theatrical mask or the mosaic depicting a sitting dog?</td>
+                    <td><span class="tag">2.24s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">إيه أحسن مطعم في الإسكندرية دلوقتي؟</td>
+                    <td class="response-cell" dir="auto">أهلاً بك! لست متأكداً من ذلك بناءً على معلوماتي الحالية، ولكن يمكنني المساعدة في موضوعات متحفية أخرى. هل تود معرفة المزيد عن تاريخ الطهي في الإسكندرية القديمة؟ لدينا بعض القطع الأثرية التي قد تثير اهتمامك، مثل موقد الطعام الموجود في قاعة نيلسون آيلاند.</td>
+                    <td><span class="tag">2.48s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Can you book me a hotel room near the museum?</td>
+                    <td class="response-cell" dir="auto">I'm not sure about that based on my current info, but I can help with other museum topics. Would you like to know more about our exhibits, such as the mosaic depicting two wrestlers in the Antiquities of the BA Site hall?</td>
+                    <td><span class="tag">2.21s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">ممكن تحجزلي تذكرة طيران لأسوان؟</td>
+                    <td class="response-cell" dir="auto">أنا لست متأكداً من ذلك بناءً على معلوماتي الحالية، ولكن يمكنني المساعدة في موضوعات متحفية أخرى. هل تود معرفة المزيد عن الآثار المصرية القديمة؟</td>
+                    <td><span class="tag">2.19s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">What is the latest iPhone model available in Egypt?</td>
+                    <td class="response-cell" dir="auto">I'm not sure about that based on my current info, but I can help with other museum topics. We have some fascinating exhibits here, like the Model of a boat in the In the Afterlife hall. Would you like to know more about ancient Egyptian artifacts?</td>
+                    <td><span class="tag">2.13s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <h3 class="category-title">Conversational / Informal</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="35%">User Query</th>
+                    <th width="45%">AI Response</th>
+                    <th width="10%">Latency</th>
+                    <th width="10%">Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td class="query-cell" dir="auto">يعني إيه الكلام اللي مكتوب على التمثال ده؟</td>
+                    <td class="response-cell" dir="auto">أهلاً بك! لست متأكداً من التمثال الذي تقصده، لكن يمكنني أن أساعدك في فهم بعض الرموز الشائعة على التماثيل هنا في المتحف. هل يمكن أن تخبرني المزيد عن التمثال الذي ترى؟ هل هو لإله معين أو له سمات معينة؟ سأحاول مساعدتك في فهم الرموز أو الكتابة الموجودة عليه.</td>
+                    <td><span class="tag">2.82s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">That bronze figurine looks cool, what's the story behind it?</td>
+                    <td class="response-cell" dir="auto">I'm not sure about that bronze figurine, as our current information doesn't seem to match it. However, we do have a fascinating fertility figurine made of pottery in the "In the Afterlife" hall, showcase 3. It's a unique piece that highlights the emphasis on fertility in ancient Egyptian culture. Would you like to know more about the significance of fertility figurines in ancient Egypt?</td>
+                    <td><span class="tag">2.33s</span></td>
+                    <td><span class="tag tag-warning">0.2</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">هو المتحف ده فيه حاجات فرعونية ولا يونانية بس؟</td>
+                    <td class="response-cell" dir="auto">المتحف ده فيه حاجات كتير من مختلف الحضارات، مش بس الفرعونية ولا اليونانية. فيه آثار من العصر الإسلامي كمان، زي الحروف المطبوعة اللي جابتها الحملة الفرنسية للهند في سنة 1798، و اللي موجودة في قاعة الآثار الإسلامية. و كمان فيه آثار فرعونية زي رأس الملك من الأسرة الثلاثين اللي موجود في قاعة الآثار المغمورة. و كمان تابوت للمدعو "أبا" ابن "عنخ حور" في قاعة الحياة بعد الموت. هل تريد معرفة المزيد عن هذه الآثار؟</td>
+                    <td><span class="tag">2.25s</span></td>
+                    <td><span class="tag tag-success">0.5</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">ده التمثال الصغير ده مصنوع من إيه؟</td>
+                    <td class="response-cell" dir="auto">التمثال الصغير للخصوبة مصنوع من الفخار.</td>
+                    <td><span class="tag">1.63s</span></td>
+                    <td><span class="tag tag-success">0.8</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">I see a statue of a woman holding a child, who is she?</td>
+                    <td class="response-cell" dir="auto">That sounds like the Statuette of Isis suckling Harpocrates, located in the Greco-Roman Antiquities hall, showcase 15. Would you like to know more about the myth behind this statue?</td>
+                    <td><span class="tag">1.6s</span></td>
+                    <td><span class="tag tag-success">0.5</span></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <h3 class="category-title">Greetings & Social Interaction</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="35%">User Query</th>
+                    <th width="45%">AI Response</th>
+                    <th width="10%">Latency</th>
+                    <th width="10%">Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td class="query-cell" dir="auto">أهلاً، ممكن تعرفني بالمتحف؟</td>
+                    <td class="response-cell" dir="auto">أهلاً بك! بالتأكيد، سأكون سعيداً بمساعدتك في استكشاف المتحف. لدينا مجموعة رائعة من القطع الأثرية التي تُظهر تاريخ وثقافة مصر القديمة. هل تود أن تبدأ بزيارة قاعة الآثار المصرية القديمة أو قاعة آثار الموقع؟</td>
+                    <td><span class="tag">2.79s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Hello, I just arrived at the museum, what should I see first?</td>
+                    <td class="response-cell" dir="auto">Hello. We have some fascinating exhibits here. I'd recommend starting with the Islamic Antiquities hall, where you can see the Gravestone, also known as شاهد قبر, in showcase 26. It's a beautiful marble headstone with intricate Kufic script inscriptions. Would you like to know more about the history behind it?</td>
+                    <td><span class="tag">1.62s</span></td>
+                    <td><span class="tag tag-success">0.5</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">مرحباً، هل يمكنك مساعدتي في التعرف على المعروضات؟</td>
+                    <td class="response-cell" dir="auto">أهلاً بك! بالطبع، سأكون سعيداً بمساعدتك في استكشاف المعروضات هنا في المتحف. ماذا تود أن تعرف أو ترى أولاً؟ هل هناك فئة معينة من الآثار تثير اهتمامك؟</td>
+                    <td><span class="tag">2.11s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Hi there! I'm a student visiting for research, where do I start?</td>
+                    <td class="response-cell" dir="auto">Hello. It's great to have you here for research. We have a wide range of artifacts across different halls. What specific area or topic are you interested in? Would you like to explore our Ancient Egyptian Antiquities, perhaps, or something else that catches your eye?</td>
+                    <td><span class="tag">2.18s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">صباح الخير، أنا زائر لأول مرة، إيه أهم القطع اللي لازم أشوفها؟</td>
+                    <td class="response-cell" dir="auto">أهلاً بك! صباح النور. نحن سعداء بزيارتك لنا. لدينا قطع أثرية رائعة هنا في المتحف. إذا كنت تريد رؤية بعض القطع المهمة، يمكنني أن أوصي بزيارة قاعة الآثار اليونانية الرومانية، حيث توجد تماثيل رائعة مثل تمثال لعازفة الهارب. كما يمكنك زيارة قاعة الحفريات، حيث توجد قطع مثل فسيفساء الكلب الجالس. هل تود معرفة المزيد عن هذه القطع أو تريد أن أرشدها لك شخصياً؟</td>
+                    <td><span class="tag">2.79s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <h3 class="category-title">Thanks & Closing Interaction</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="35%">User Query</th>
+                    <th width="45%">AI Response</th>
+                    <th width="10%">Latency</th>
+                    <th width="10%">Relevance</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td class="query-cell" dir="auto">شكراً جزيلاً على المعلومات، استمتعت جداً بالزيارة</td>
+                    <td class="response-cell" dir="auto">العفو! سعيد جداً بمعرفتك أنك استمتعت بالزيارة. هل تود معرفة المزيد عن أي من المعروضات التي رأيتها اليوم؟</td>
+                    <td><span class="tag">2.56s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Thank you so much, that was very informative!</td>
+                    <td class="response-cell" dir="auto">You're welcome! I'm glad I could help. Is there something else you'd like to learn about in our Islamic Antiquities collection?</td>
+                    <td><span class="tag">2.54s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">يعطيك العافية، هتكلمني عن قطعة تانية؟</td>
+                    <td class="response-cell" dir="auto">العفو! بالتأكيد، هناك العديد من القطع الرائعة هنا. هل تود أن تعرف عن فسيفساء تصور اثنين من المتصارعين؟ وهي موجودة في قاعة آثار الموقع.</td>
+                    <td><span class="tag">2.4s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">Thanks, I learned a lot today. Goodbye!</td>
+                    <td class="response-cell" dir="auto">You're welcome! It was a pleasure having you at the museum. Goodbye, and I hope you have a great day!</td>
+                    <td><span class="tag">2.32s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+                <tr>
+                    <td class="query-cell" dir="auto">مع السلامة، كانت تجربة رائعة</td>
+                    <td class="response-cell" dir="auto">مع السلامة! أتمنى لك يومًا رائعًا وممتعًا. هل تود زيارة أي قسم آخر من المتحف قبل مغادرتك؟</td>
+                    <td><span class="tag">2.17s</span></td>
+                    <td><span class="tag tag-warning">0.0</span></td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <h2>Part 2: Multi-Turn Dialogues (Chat History)</h2>
+
+        <div class="chat-container">
+            <div class="scenario-title">Scenario A — Imhotep Deep Dive (Arabic)</div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                قولي عن تمثال إيمحتب
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                تمثال إيمحتب هو تمثال صغير مصنوع من البرونز يُصوِّر إيمحتب جالسًا مع يديه مستندتين على ركبتيه وهو يحمل لفافة من البردي. إيمحتب كان مهندسًا مشهورًا ومستشارًا للملك دجوسر من الأسرة الثالثة (العصر القديم) الذي بنى مجمع سقارة وأهراماته. يُعتبر هذا التمثال من الفترة المتأخرة وقد تم اكتشافه في سقارة. هل تود معرفة المزيد عن الملك دجوسر الذي عمل إيمحتب معه؟
+                <div class="chat-meta">Latency: 1.91s | Relevance: 0.5</div>
+            </div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                مين هو إيمحتب ده بالظبط؟
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                إيمحتب كان مهندسًا مشهورًا ومستشارًا للملك دجوسر من الأسرة الثالثة. يُعتبر من الشخصيات المهمة في تاريخ مصر القديمة، حيث لعب دورًا كبيرًا في بناء مجمع سقارة وأهرامته. كان إيمحتب أيضًا عالمًا وطبيبًا، وقد ساهم في تطوير العمارة والطب في مصر القديمة. هل تود معرفة المزيد عن إنجازات إيمحتب في مجال العمارة؟
+                <div class="chat-meta">Latency: 1.63s | Relevance: 0.5</div>
+            </div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                وامتى عاش تقريباً؟
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                إيمحتب عاش في الفترة التي تُسمى الأسرة الثالثة، والتي تُعتبر جزءًا من العصر القديم في مصر. هذا يعني أنه عاش حوالي 2600-2575 قبل الميلاد. هل تود معرفة المزيد عن العصر القديم في مصر؟
+                <div class="chat-meta">Latency: 1.42s | Relevance: 0.33</div>
+            </div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                وهل عندكم قطع تانية من نفس العصر ده؟
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                نعم، لدينا قطع أخرى من نفس العصر. على سبيل المثال، هناك رأس لملك من الأسرة الثلاثين، مصنوع من الجرانيت الأسود، يرتدي التاج الأزرق مع ثعبان الوادي. كما لدينا خاتمًا ذا فص على شكل مصباح زيت، مصنوع من الذهب. هل تود معرفة المزيد عن هذه القطع؟
+                <div class="chat-meta">Latency: 2.56s | Relevance: 0.0</div>
+            </div>
+
+        </div>
+
+        <div class="chat-container">
+            <div class="scenario-title">Scenario B — Isis Statuette (English)</div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                Tell me about the statuette of Isis
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                We have a beautiful statuette of Isis suckling Harpocrates in the Greco-Roman Antiquities hall, showcase 15. It's a bronze piece depicting Isis with her son Horus, showcasing her role as a nurturing goddess. Would you like to know more about the significance of Isis in ancient Egyptian mythology?
+                <div class="chat-meta">Latency: 1.37s | Relevance: 0.8</div>
+            </div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                What material is it made of?
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                The statuette of Isis is made of bronze. Would you like to know more about the significance of bronze in ancient art?
+                <div class="chat-meta">Latency: 1.42s | Relevance: 0.5</div>
+            </div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                Where was it found originally?
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                The statuette of Isis suckling Harpocrates was found at an unknown location. Would you like to know more about the Greco-Roman Antiquities hall where it's currently displayed?
+                <div class="chat-meta">Latency: 1.48s | Relevance: 0.8</div>
+            </div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                Are there similar pieces in the museum?
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                We have a stele depicting Isis-Thermoutis in the Submerged Antiquities hall, showcase 12, which also showcases Isis in a significant role. Would you like to compare the two pieces and learn more about their differences?
+                <div class="chat-meta">Latency: 1.52s | Relevance: 0.5</div>
+            </div>
+
+        </div>
+
+        <div class="chat-container">
+            <div class="scenario-title">Scenario C — Scribes & Writing Tools (Mixed)</div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                What did ancient Egyptian scribes do?
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                Ancient Egyptian scribes were responsible for writing and recording important information, such as documents, stories, and prayers. They used tools like reed pens, which we have an example of in our Pencase with six reed pens exhibit in the Ancient Egyptian Antiquities hall. Would you like to know more about the role of scribes in ancient Egyptian society?
+                <div class="chat-meta">Latency: 2.52s | Relevance: 0.2</div>
+            </div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                What tools did they use?
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                Ancient Egyptian scribes used tools like reed pens, which you can see an example of in our Pencase with six reed pens exhibit in the Ancient Egyptian Antiquities hall. They also used a pencase with wells for black and red pigments. Would you like to know more about how they wrote with these tools?
+                <div class="chat-meta">Latency: 1.82s | Relevance: 0.33</div>
+            </div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                قولي عن المقلمة اللي في المتحف
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                المقلمة التي نقصدها هي "مقلمة بها ستة أقلام من البوص"، وهي معروضة في قاعة الآثار المصرية القديمة. هذه المقلمة كانت تستخدم من الأسرة الخامسة حتى العصر المتأخر، وهي تحتوي على حفرتين ضحلتين لpigments أسود وأحمر، بالإضافة إلى فتحة مركزية لتخزين الأقلام. هل تود معرفة المزيد عن كيفية استخدامها؟
+                <div class="chat-meta">Latency: 2.18s | Relevance: 0.5</div>
+            </div>
+
+            <div class="chat-bubble bubble-user" dir="auto">
+                وهل الألوان دي موجودة لسه عندكم؟
+            </div>
+            <div class="chat-bubble bubble-ai" dir="auto">
+                نعم، الألوان التي استخدمها الكتبة في العصر القديم موجودة في المتحف. يمكنك رؤية لوحة الألوان في قاعة الآثار المصرية القديمة، حيث توجد عينة من اللوحة التي استخدمت لتحضير الألوان الحمراء وال سوداء. هل تود معرفة المزيد عن كيفية تحضير هذه الألوان؟
+                <div class="chat-meta">Latency: 5.05s | Relevance: 0.5</div>
+            </div>
+
+        </div>
+
+    </div>
+</body>
+</html>

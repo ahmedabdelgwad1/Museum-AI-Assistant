@@ -1,0 +1,18 @@
+{
+  "session_id": "museum-assistant-user-1781353698",
+  "locale": "en",
+  "start_time": "2026-06-13T15:28:43.473559",
+  "end_time": "2026-06-13T15:30:27.567670",
+  "total_duration_seconds": 104.09,
+  "total_turns": 1,
+  "turns": [
+    {
+      "timestamp": "2026-06-13T15:29:12.137039",
+      "user_query": "['Tell me about ancient Egyptian.']",
+      "ai_response": "The ancient Egyptians were a fascinating civilization. We have many artifacts here that showcase their culture and daily life. For example, we have a block statue of Djed Khonsu Iou.ef Ankh in the Ancient Egyptian Antiquities hall, which gives us insight into their religious and social practices. Would you like to know more about the era it was made in?",
+      "latency_seconds": 2.431,
+      "generation_time_seconds": 2.656,
+      "relevance_score": 0.8
+    }
+  ]
+}

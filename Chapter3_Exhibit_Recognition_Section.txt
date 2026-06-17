@@ -1,0 +1,124 @@
+## 3.9 Exhibit Recognition Pipeline Design
+The Exhibit Recognition module constitutes a core perceptual component of the Smart Tourist Guide Robot, functioning as the visual bridge between the robot's camera feed and the Retrieval-Augmented Generation (RAG) knowledge base. When a visitor directs attention toward a museum exhibit, the module is responsible for identifying that exhibit from a live camera frame and returning a structured identification result — comprising the exhibit name, its museum section, and a numeric confidence score — to the conversational pipeline. This identification triggers the retrieval of exhibit-specific knowledge, enabling the robot to deliver contextually accurate and personalized guidance without requiring any manual input from the visitor.
+
+The module is designed around the principle of embedding-based visual retrieval, in which a pre-trained Vision Foundation Model encodes both reference images of known exhibits and live query frames as dense, high-dimensional feature vectors. Exhibit identification is then performed by computing the semantic similarity between the query vector and the pre-computed reference embeddings, and selecting the most similar exhibit above a defined confidence threshold. The overall pipeline proceeds through five sequential stages: image preprocessing, visual feature extraction, knowledge base retrieval, similarity matching, and decision output.
+
+```mermaid
+flowchart LR
+    A[Raw Camera Frame] --> B[Image Preprocessing]
+    B --> C[Vision Foundation Model\nFeature Extractor]
+    C --> D[Cosine Similarity Search]
+    E[(Exhibit Embedding Database)] -.-> D
+    D --> F{Confidence Threshold Gate}
+    F -->|Pass| G[Exhibit ID Output:\nName, Section, Score]
+    F -->|Fail| H[Unrecognized]
+```
+
+*Figure 3.9.1: High-Level Block Diagram of the Exhibit Recognition Pipeline.*
+
+### 3.9.1 Modular Architecture for Baseline Comparison
+To enable a rigorous and fair evaluation of the retrieval system's core identification capability, the pipeline architecture was explicitly designed around a modular encoder interface. Rather than committing to a single fixed visual encoder at the design stage, the system defines a standardized extractor abstraction through which any compatible Vision Foundation Model can be loaded, applied to an image, and unloaded without modifying any other component of the pipeline. This architectural decision decouples the feature extraction stage from all downstream processing — including preprocessing normalization, knowledge base construction, similarity computation, and the output interface — ensuring that all models operate on an identical pipeline and are evaluated under strictly equivalent conditions.
+
+While DINOv2, a self-supervised vision foundation model, is the primary encoder of interest for this system due to its strong visual representation capabilities and the absence of a dependency on paired text data, the pipeline is engineered to seamlessly accommodate alternative encoders. Specifically, the modular design was established to allow comparative testing against three vision-language foundation models — CLIP [19], SigLIP [20], and EVA-CLIP [21] — each of which aligns visual and textual representations within a shared embedding space. The results of this comparative evaluation, including quantitative performance metrics across all four encoders, are presented in Chapter 4.
+
+### 3.9.2 Exhibit Detection Model: Auto-Labeling and YOLOv8
+Before the embedding pipeline can operate, the primary artifact must be localized and cropped from the raw camera frame. A dedicated single-class artifact detector based on YOLOv8 [12] is trained for this purpose. Due to the absence of annotated bounding box data for the Bibliotheca Alexandrina collection, an automated labeling pipeline was designed using Grounding DINO, a zero-shot open-vocabulary object detector. The artifact detector is trained using the nano-scale variant of YOLOv8 initialized from general-domain pre-trained weights and fine-tuned on the auto-labeled museum dataset.
+
+### 3.9.3 Image Preprocessing
+Prior to feature extraction, each input frame undergoes a standardized preprocessing pipeline to normalize its spatial and statistical properties in accordance with the requirements of the target Vision Foundation Model. The preprocessing stage is designed to operate both on reference images during the offline knowledge base construction phase and on live query frames during real-time inference, ensuring that both reference and query embeddings reside in a consistent representation space.
+
+For the self-supervised encoder (DINOv2), the preprocessing sequence comprises three steps. First, the input image is resized such that its shorter edge equals 224 pixels, using bicubic interpolation to preserve high-frequency visual detail relevant to fine-grained artifact recognition. Second, a center crop of 224 × 224 pixels is applied to yield a fixed spatial input resolution. Third, the resulting tensor is normalized channel-wise using the mean and standard deviation statistics of the ImageNet dataset, which correspond to the statistics used during the encoder's pre-training, thereby ensuring that input distributions at inference time match those seen during training.
+
+For the vision-language encoders (CLIP, SigLIP, and EVA-CLIP), the preprocessing pipeline is handled by the model-specific processor provided with each pre-trained checkpoint. These processors internally perform analogous spatial resizing and statistical normalization operations, but are parameterized according to each model's specific training configuration. The use of model-native preprocessors ensures that the spatial and normalization assumptions embedded in each encoder's learned weights are fully respected during both reference embedding construction and query-time inference.
+
+```mermaid
+flowchart TD
+    Raw[Raw Camera Frame] --> RGB[Convert to RGB]
+    
+    subgraph DINOv2 Path [Self-Supervised Encoder]
+        RGB --> Resize[Bicubic Resize shorter edge=224px]
+        Resize --> Crop[Center Crop 224x224]
+        Crop --> Tensor[Convert to Tensor]
+        Tensor --> Norm1[Channel-wise Normalization ImageNet]
+    end
+    
+    subgraph VLM Path [CLIP / SigLIP / EVA-CLIP]
+        RGB --> Proc[Model-Specific Processor]
+    end
+    
+    Norm1 --> Extractor[Vision Foundation Model\nFeature Extractor]
+    Proc --> Extractor
+```
+
+*Figure 3.9.2: Image Preprocessing Pipelines for Self-Supervised and Vision-Language Encoders.*
+
+### 3.9.4 Visual Feature Extraction
+Following preprocessing, the normalized image tensor is passed through the pre-trained Vision Foundation Model to produce a dense embedding vector representing the visual content of the input. All encoders are loaded in evaluation mode with their weights frozen — no fine-tuning is applied to any model on the museum dataset. This design choice is deliberate: it relies entirely on the generalization capability of the models' pre-trained representations and avoids the risk of overfitting to the relatively small per-exhibit image sets available in the Bibliotheca Alexandrina collection.
+
+For the DINOv2 encoder, the model processes the input tensor and returns a global feature vector extracted from the class token of its Vision Transformer backbone. This vector encodes a holistic visual representation of the exhibit and serves as the sole embedding for DINOv2, as no text encoder is available in this model. For the vision-language encoders, only the visual branch of the model is engaged during inference-time query processing: the input frame is encoded solely through the image encoder, yielding a visual embedding that is compatible with the shared vision-language embedding space.
+
+Across all four models, the output feature vector is subsequently subjected to L2 normalization, projecting it onto the unit hypersphere. This normalization step is critical for the downstream cosine similarity computation, as it ensures that the magnitude of the embedding does not artificially influence similarity scores, and that the matching operation reflects purely directional, semantic proximity in the embedding space.
+
+A notable architectural distinction governs the construction of reference embeddings for the vision-language encoders. Because CLIP, SigLIP, and EVA-CLIP support aligned image and text encoders, the reference embedding for each exhibit is formed as a weighted fusion of a visual component and a textual component. The visual component is computed as the mean embedding across all reference images available for a given exhibit. The textual component is computed by encoding a set of three structured natural language prompts describing the exhibit, averaging the resulting text embeddings, and normalizing the mean. The final reference embedding is then obtained as a weighted linear combination of these two components, assigning a dominant weight to the visual component and a supplementary weight to the textual component. The rationale for this strategy is to anchor the reference embedding more strongly to the visual appearance of the artifact while leveraging the semantic specificity of textual descriptions as a stabilizing complement. For DINOv2, which lacks a text encoder, the reference embedding is constructed from the visual mean alone.
+
+### 3.9.5 Dynamic Knowledge Base and Cloud Integration
+To ensure a highly scalable and maintenance-free deployment, the system transitioned from static, offline `.npy` embedding files to a **Dynamic Vision-RAG Architecture**. The reference embeddings of all museum exhibits are now continuously maintained and stored in a cloud-based Supabase database utilizing the `pgvector` extension.
+
+This dynamic approach completely eliminates the need for manual, offline knowledge base reconstruction. When museum curators add or update artifacts via the Administrator Dashboard, the artifact's image is immediately processed by the DINOv2 encoder. The resulting 768-dimensional L2-normalized vector is stored dynamically in a dedicated `visual_embedding` column within the primary `museum_artifacts` database table, alongside the textual RAG embeddings.
+
+This unified storage strategy ensures that the visual identity and the textual knowledge of any given artifact are intrinsically linked in the cloud, allowing the robot to seamlessly query both modalities.
+
+```mermaid
+flowchart LR
+    subgraph Admin Interface
+        Curator([Curator]) -- "Uploads Exhibit Image" --> API[FastAPI Backend]
+    end
+    
+    subgraph Backend Services
+        API -- "Generates 768-dim Vector" --> DINO[DINOv2 Encoder]
+    end
+    
+    subgraph Cloud Storage [Supabase pgvector]
+        DB[(museum_artifacts Table)]
+        Text[Text Embedding]
+        Vis[Visual Embedding]
+        DB --- Text
+        DB --- Vis
+    end
+    
+    DINO -- "Upserts Data" --> DB
+```
+
+*Figure 3.9.3: Dynamic Cloud Integration for Exhibit Embeddings using Supabase.*
+
+### 3.9.6 Similarity Matching Mechanism (Cloud RPC)
+At inference time, when the robot's camera establishes that the visitor is actively `ENGAGED`, the Python backend extracts a live frame, converts it via DINOv2 into a query embedding, and executes a similarity matching query. Unlike traditional systems that compute matrix dot products locally, this architecture offloads the intensive similarity search directly to the Supabase Cloud.
+
+The similarity measure employed is Cosine Distance (or Cosine Similarity), computed natively within PostgreSQL using the `pgvector` operator `<=>`. The backend invokes a specialized Remote Procedure Call (RPC) named `match_visual_artifacts`, passing the query embedding and a predefined confidence threshold (e.g., `0.35` distance).
+
+$$ \text{distance} = 1 - \cos(\theta) = 1 - \frac{A \cdot B}{\|A\| \|B\|} $$
+
+```mermaid
+sequenceDiagram
+    participant Robot as LiveKit Agent
+    participant DINO as DINOv2 Model
+    participant DB as Supabase (pgvector)
+    
+    Robot->>DINO: Extract 768-dim Visual Vector
+    DINO-->>Robot: Query Vector
+    Robot->>DB: RPC: match_visual_artifacts(query_vector, threshold)
+    DB->>DB: Calculate Cosine Distance <=>
+    DB-->>Robot: Top 1 Matched Artifact (Metadata)
+    Robot->>Robot: Inject into LLM Vision Context
+```
+
+*Figure 3.9.4: Sequence Diagram of the Real-Time Cloud Similarity Matching.*
+
+The `pgvector` extension rapidly compares the incoming query vector against all rows in the `visual_embedding` column. If the nearest artifact falls within the strict distance threshold, the database returns the artifact's metadata directly. This structured output is immediately consumed by the LiveKit agent, which securely injects the identified artifact's name and description into the LangGraph LLM's system prompt (the `vision_context`). If no artifact meets the threshold, the system fails gracefully, avoiding hallucinations and ensuring the robot does not provide fabricated historical facts about unrecognized objects.
+
+### 3.9.7 Design Justification
+The embedding-based visual retrieval architecture adopted for this module was selected in preference to conventional supervised classification approaches on the basis of three properties that are particularly relevant to the dynamic museum deployment context. First, embedding-based retrieval is fundamentally open-set: adding a new exhibit to the system requires only the pre-computation of a new reference embedding, without retraining or modifying any model weights. As established by Zheng et al. [17] in the literature reviewed in Chapter 2, embedding-based retrieval generalizes more effectively to previously unseen artifacts than closed-set classification approaches, which require retraining as new items are introduced — a significant practical advantage for a museum collection that evolves with new acquisitions and changing exhibitions.
+
+Second, the adoption of pre-trained Vision Foundation Models enables the system to leverage representations learned from vast external visual corpora, providing strong generalization performance even in the low-data regime characteristic of per-exhibit museum image collections. Oquab et al. [18] demonstrated that the self-supervised visual features produced by DINOv2 capture fine-grained visual details relevant to object identity, making them well-suited to the discrimination of visually similar artifacts — a common challenge in densely curated museum environments. The inclusion of vision-language models (CLIP [19], SigLIP [20], and EVA-CLIP [21]) as comparative encoders further exploits the semantic alignment between visual and textual domains, providing an additional modality through which exhibit representations can be disambiguated.
+
+Third, the architectural requirement that the entire recognition pipeline operates within the real-time inference budget imposed by the robot's 30-frames-per-second visual processing constraint influenced the decision to pre-compute and persist all reference embeddings offline. By restricting the real-time computational path to a single forward pass through the query encoder and a matrix dot-product similarity operation, the pipeline is engineered to meet strict latency constraints without sacrificing the representational quality afforded by large-scale pre-trained models. This design aligns with the system-level goal of delivering seamless, low-latency exhibit recognition as a transparent perceptual capability underlying the robot's conversational guidance function.

@@ -1,0 +1,9 @@
+{
+  "latency_metrics": {
+    "total_turns_analyzed": 62,
+    "avg_retrieval_time": 1.373,
+    "avg_llm_generation_time": 2.254,
+    "avg_total_latency (TTFB)": 2.254
+  },
+  "ragas_metrics": null
+}
