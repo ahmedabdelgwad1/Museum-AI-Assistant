@@ -99,18 +99,22 @@ def add_documents(
     embeddings: List[List[float]],
     documents: List[str],
     metadatas: List[Dict[str, Any]],
+    visual_embeddings: Optional[List[List[float]]] = None,
 ) -> List[str]:
     """Upsert embedded artifacts into the Supabase table and return assigned IDs."""
     client = get_supabase_client()
     records = []
-    for artifact_id, document, metadata, embedding in zip(
+    for i, (artifact_id, document, metadata, embedding) in enumerate(zip(
         ids, documents, metadatas, embeddings
-    ):
+    )):
         record = {
             "content": document,
             "metadata": metadata,
             "embedding": embedding,
         }
+        if visual_embeddings and i < len(visual_embeddings) and visual_embeddings[i]:
+            record["visual_embedding"] = visual_embeddings[i]
+            
         # If ID is a number, we are updating an existing row
         try:
             record["id"] = int(artifact_id)

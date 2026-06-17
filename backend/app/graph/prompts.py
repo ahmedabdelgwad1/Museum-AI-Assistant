@@ -174,19 +174,24 @@ def format_history_for_prompt(history: list[dict], max_turns: int = 6) -> str:
     return "\n".join(lines) if lines else "(No prior conversation)"
 
 
-def get_system_prompt(language: str, low_confidence: bool = False) -> str:
+def get_system_prompt(language: str, low_confidence: bool = False, vision_context: str = "") -> str:
     """
     Return the generator system prompt for the given language.
     Appends the low-confidence caveat when low_confidence=True.
+    Appends vision_context if the robot's camera recognized an artifact.
     """
     if language == "ar":
         prompt = SYSTEM_PROMPT_AR
         if low_confidence:
             prompt += LOW_CONFIDENCE_CAVEAT_AR
+        if vision_context:
+            prompt += f"\n\n[سياق الرؤية من الكاميرا: {vision_context}]"
     else:
         prompt = SYSTEM_PROMPT_EN
         if low_confidence:
             prompt += LOW_CONFIDENCE_CAVEAT_EN
+        if vision_context:
+            prompt += f"\n\n[Vision Context from Camera: {vision_context}]"
     return prompt
 
 

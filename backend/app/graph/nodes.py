@@ -273,8 +273,9 @@ def generate_answer(state: GraphState) -> GraphState:
 
     # Detect low-confidence retrieval: max rewrites used AND score still low
     low_confidence = score < settings.relevance_threshold and rewrites >= settings.max_rewrite_attempts
+    vision_ctx = state.get("vision_context", "")
 
-    system_prompt = get_system_prompt(lang, low_confidence=low_confidence)
+    system_prompt = get_system_prompt(lang, low_confidence=low_confidence, vision_context=vision_ctx)
     context = _build_artifact_context(docs)
     user_msg = get_context_template(lang).format(context=context, question=question)
 
@@ -340,8 +341,9 @@ def generate_answer_stream(state: GraphState):
     )
 
     low_confidence = score < settings.relevance_threshold and rewrites >= settings.max_rewrite_attempts
+    vision_ctx = state.get("vision_context", "")
 
-    system_prompt = get_system_prompt(lang, low_confidence=low_confidence)
+    system_prompt = get_system_prompt(lang, low_confidence=low_confidence, vision_context=vision_ctx)
     context = _build_artifact_context(docs)
     user_msg = get_context_template(lang).format(context=context, question=question)
 
@@ -412,8 +414,9 @@ async def generate_answer_stream_async(state: GraphState):
     )
 
     low_confidence = score < settings.relevance_threshold and rewrites >= settings.max_rewrite_attempts
+    vision_ctx = state.get("vision_context", "")
 
-    system_prompt = get_system_prompt(lang, low_confidence=low_confidence)
+    system_prompt = get_system_prompt(lang, low_confidence=low_confidence, vision_context=vision_ctx)
     context = _build_artifact_context(docs)
     user_msg = get_context_template(lang).format(context=context, question=question)
 

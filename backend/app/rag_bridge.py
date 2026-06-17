@@ -46,14 +46,14 @@ class RAGStream(llm.LLMStream):
 
         # Extract the latest user message
         self._last_user_msg = ""
-        for m in reversed(chat_ctx.messages()):
+        for m in reversed(chat_ctx.messages):
             if m.role == "user":
                 self._last_user_msg = m.content if isinstance(m.content, str) else str(m.content)
                 break
 
         # Build conversation history
         self._history: list[dict] = []
-        for m in chat_ctx.messages()[:-1]:
+        for m in chat_ctx.messages[:-1]:
             role = m.role if m.role in {"user", "assistant"} else "assistant"
             content = m.content if isinstance(m.content, str) else str(m.content)
             self._history.append({"role": role, "content": content})
@@ -107,6 +107,7 @@ class RAGStream(llm.LLMStream):
                         delta=llm.ChoiceDelta(content=response_text, role="assistant"),
                     )
                 )
+                return
             elif declined:
                 self._livekit_llm.visitor_state = "none"
                 locale = self._livekit_llm.fixed_locale or "ar"
@@ -118,22 +119,29 @@ class RAGStream(llm.LLMStream):
                         delta=llm.ChoiceDelta(content=response_text, role="assistant"),
                     )
                 )
+                return
             else:
-                # Not a confirmation — ask again politely
-                locale = self._livekit_llm.fixed_locale or "ar"
-                if state == "asking":
-                    retry = "\u0647\u0644 \u0623\u0646\u062a \u0647\u0646\u0627\u061f" if locale == "ar" else "Are you still there?"
+                # If they said something else, assume it's a question and proceed to RAG!
+                if len(user_text.split()) > 2 or "?" in user_text or "\u061f" in user_text:
+                    logger.info("RAGBridge: user asked a question, assuming active and proceeding to answer")
+                    self._livekit_llm.visitor_state = "active"
+                    # Do not return, let the execution fall through to the RAG pipeline
                 else:
-                    retry = "\u062a\u062d\u0628 \u0623\u0643\u0645\u0644\u061f" if locale == "ar" else "Do you want me to continue?"
+                    # Not a confirmation and too short — ask again politely
+                    locale = self._livekit_llm.fixed_locale or "ar"
+                    if state == "asking":
+                        retry = "\u0647\u0644 \u0623\u0646\u062a \u0647\u0646\u0627\u061f" if locale == "ar" else "Are you still there?"
+                    else:
+                        retry = "\u062a\u062d\u0628 \u0623\u0643\u0645\u0644\u061f" if locale == "ar" else "Do you want me to continue?"
 
-                logger.info("RAGBridge: no confirmation received, asking again")
-                self._event_ch.send_nowait(
-                    llm.ChatChunk(
-                        id=f"rag-{uuid.uuid4().hex}",
-                        delta=llm.ChoiceDelta(content=retry, role="assistant"),
+                    logger.info("RAGBridge: no confirmation received, asking again")
+                    self._event_ch.send_nowait(
+                        llm.ChatChunk(
+                            id=f"rag-{uuid.uuid4().hex}",
+                            delta=llm.ChoiceDelta(content=retry, role="assistant"),
+                        )
                     )
-                )
-            return  # Do not run RAG in this state
+                    return
 
         # state == "active" — full RAG pipeline
         # Build initial GraphState for the RAG pipeline
@@ -146,6 +154,7 @@ class RAGStream(llm.LLMStream):
             "generation": "",
             "rewrite_count": 0,
             "conversation_history": self._history,
+            "vision_context": self._livekit_llm.vision_context,
         }
 
         # Run the retrieval synchronously using existing node functions
@@ -156,17 +165,29 @@ class RAGStream(llm.LLMStream):
         try:
             # Step 1: Rewriter
             state = await loop.run_in_executor(None, lambda: rewrite_query(initial_state))
-            # Step 2: Retriever & Grader
+
+            # Step 2: Retriever & Grader (timed)
+            retrieval_start = time.time()
             state = await loop.run_in_executor(None, lambda: retrieve_and_grade(state))
             
             # Step 3: Conditional Loop
             while should_rewrite(state) == "rewrite":
                 state = await loop.run_in_executor(None, lambda: rewrite_query(state))
                 state = await loop.run_in_executor(None, lambda: retrieve_and_grade(state))
+            retrieval_time = time.time() - retrieval_start
+
+            # Extract contexts for RAGAS evaluation
+            retrieved_contexts = []
+            for doc in state.get("retrieved_docs", []):
+                if hasattr(doc, "page_content"):
+                    retrieved_contexts.append(doc.page_content)
+                elif isinstance(doc, str):
+                    retrieved_contexts.append(doc)
                 
-            # Step 4: Stream Generator
+            # Step 4: Stream Generator (timed)
             full_answer = ""
             first_token_time = None
+            llm_gen_start = time.time()
             async for chunk in generate_answer_stream_async(state):
                 # If vision closes the gate mid-generation, immediately halt the stream.
                 if self._livekit_llm.visitor_state != "active":
@@ -184,7 +205,10 @@ class RAGStream(llm.LLMStream):
                         )
                     )
             
-            # Log metrics
+            # Calculate component-level latencies
+            llm_ttft_time = (first_token_time - llm_gen_start) if first_token_time else 0.0
+
+            # Log metrics with full detail
             if self.session_logger:
                 end_time = time.time()
                 latency = (first_token_time - self.start_time) if first_token_time else 0.0
@@ -194,7 +218,10 @@ class RAGStream(llm.LLMStream):
                     ai_response=full_answer,
                     latency_seconds=latency,
                     generation_time_seconds=gen_time,
-                    relevance_score=state.get("relevance_score", 0.0)
+                    relevance_score=state.get("relevance_score", 0.0),
+                    contexts=retrieved_contexts,
+                    retrieval_time=retrieval_time,
+                    llm_ttft_time=llm_ttft_time,
                 )
         except Exception as exc:
             logger.exception("RAG streaming pipeline failed: %s", exc)
@@ -243,6 +270,7 @@ class RAGBridge(llm.LLM):
         #   "active"           — visitor confirmed, full RAG conversation is enabled
         self.visitor_state: str = "none"
         self.greeting_text: str = ""   # set by agent.py after locale is resolved
+        self.vision_context: str = ""  # updated by agent.py vision loop
 
     def chat(
         self,

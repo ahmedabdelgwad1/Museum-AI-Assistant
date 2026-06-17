@@ -90,17 +90,29 @@ export type AdminArtifactRecord = {
 export async function getAdminArtifacts(page = 1, pageSize = 100) {
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
+  
   const result = await supabase
     .from("museum_artifacts")
-    .select("id, content, metadata", { count: "exact" })
+    .select("id, metadata", { count: "exact" })
     .order("id", { ascending: true })
     .range(from, to)
 
   if (result.error) throw result.error
 
+  // Map the relational data back to the format the Admin UI expects
+  const mappedRecords = (result.data || []).map(row => {
+    const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata || {});
+    return {
+      id: row.id,
+      metadata: meta,
+      // Since created_at might not exist in the vectorstore, we just use a fallback or omit
+      created_at: new Date().toISOString() // Temporary fallback for recent activity sorting
+    }
+  }) as AdminArtifactRecord[];
+
   return {
     total: result.count || 0,
-    records: (result.data || []) as AdminArtifactRecord[],
+    records: mappedRecords,
   }
 }
 

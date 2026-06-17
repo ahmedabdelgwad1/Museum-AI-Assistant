@@ -22,3 +22,6 @@ livekit-agents>=0.8.0
 livekit-plugins-groq>=0.3.0
 livekit-plugins-silero>=0.6.0
 livekit-api>=0.6.0
+torch>=2.0.0
+torchvision>=0.15.0
+pillow>=10.0.0

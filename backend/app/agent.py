@@ -150,6 +150,48 @@ async def _vision_loop(
                     timeout_handle.cancel()
                     timeout_handle = None
 
+                # Trigger DINOv2 visual recognition
+                try:
+                    from app.dinov2 import DinoV2Encoder
+                    from app.rag.vectorstore import get_supabase_client
+                    from PIL import Image
+                    import json
+                    
+                    encoder = DinoV2Encoder.get_instance()
+                    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+                    pil_img = Image.fromarray(rgb)
+                    visual_vec = encoder.embed(pil_img)
+                    
+                    if visual_vec:
+                        client = get_supabase_client()
+                        response = client.rpc(
+                            "match_visual_artifacts",
+                            {
+                                "query_embedding": visual_vec,
+                                "match_threshold": 0.35,
+                                "match_count": 1
+                            }
+                        ).execute()
+                        if response.data:
+                            matched = response.data[0]
+                            meta = matched.get("metadata", {})
+                            if isinstance(meta, str):
+                                try:
+                                    meta = json.loads(meta)
+                                except:
+                                    pass
+                            
+                            art_name_en = meta.get('artifact_name_en', 'Unknown')
+                            art_name_ar = meta.get('artifact_name_ar', 'غير معروف')
+                            desc_en = meta.get('description_en', '')
+                            desc_ar = meta.get('description_ar', '')
+                            rag_bridge.vision_context = f"EN: The visitor is looking at: {art_name_en}. Description: {desc_en} | AR: الزائر ينظر إلى: {art_name_ar}. الوصف: {desc_ar}"
+                            logger.info("Vision matched artifact: %s", art_name_en)
+                        else:
+                            rag_bridge.vision_context = ""
+                except Exception as e:
+                    logger.error("Failed to run DINOv2 visual match: %s", e)
+
                 if rag_bridge.visitor_state == "asking_continue":
                     logger.info("Vision ENGAGED → visitor looked back, resuming")
                     rag_bridge.visitor_state = "active"

@@ -27,15 +27,7 @@ const CHAT_TOPIC = 'lk.chat';
 export function useLiveKit(artifact: any, locale: 'en' | 'ar') {
   const dict = useMemo(() => getDictionary(locale), [locale]);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'ai',
-      content:
-        locale === 'en'
-          ? `Tell me about ${artifact?.artifact_name_en || 'this artifact'}`
-          : `حدثني عن ${artifact?.artifact_name_ar || 'هذه القطعة'}`,
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);

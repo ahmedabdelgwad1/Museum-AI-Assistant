@@ -5,6 +5,9 @@ from uuid import uuid4
 from typing import Optional
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException, Query, status
+import io
+import httpx
+from PIL import Image
 
 from app.models import (
     ArtifactDetail,
@@ -147,13 +150,49 @@ async def create_artifact(request: ArtifactCreateRequest) -> ArtifactDetail:
     embedding = embed_query(document)
 
     try:
+        # 1. Insert into artifacts_raw to get the relational ID
+        from app.rag.vectorstore import get_supabase_client
+        client = get_supabase_client()
+        raw_data = {
+            "artifact_name_en": name_en,
+            "artifact_name_ar": metadata["artifact_name_ar"],
+            "description_en": metadata["description_en"],
+            "description_ar": metadata["description_ar"],
+            "category_en": metadata["category_en"],
+            "url": metadata["image_url"] or metadata["link"],
+        }
+        
+        # We wrap in try-except in case artifacts_raw doesn't exist yet in some environments
+        try:
+            raw_response = client.table("artifacts_raw").insert(raw_data).execute()
+            final_id = str(raw_response.data[0]["artifact_id"])
+        except Exception as e:
+            logger.error("Failed to insert into artifacts_raw: %s", e)
+            final_id = "new" # Fallback if table doesn't exist
+
+        visual_embedding = None
+        if metadata.get("image_url"):
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(metadata["image_url"], timeout=10.0)
+                    if resp.status_code == 200:
+                        from app.dinov2 import DinoV2Encoder
+                        encoder = DinoV2Encoder.get_instance()
+                        visual_embedding = encoder.embed(Image.open(io.BytesIO(resp.content)))
+            except Exception as e:
+                logger.error("Failed to generate visual embedding on create: %s", e)
+
+        # 2. Insert into museum_artifacts with the retrieved ID
         inserted_ids = add_documents(
-            ids=["new"],  # 'new' is a non-integer, so add_documents will let DB auto-increment
+            ids=[final_id],
             embeddings=[embedding],
             documents=[document],
             metadatas=[metadata],
+            visual_embeddings=[visual_embedding] if visual_embedding else None,
         )
-        final_id = inserted_ids[0] if inserted_ids else "0"
+        if final_id == "new" and inserted_ids:
+            final_id = inserted_ids[0]
+            
     except Exception as exc:
         logger.exception("Failed to create artifact in Supabase")
         raise HTTPException(
@@ -325,11 +364,40 @@ async def patch_artifact(artifact_id: str, request: ArtifactUpdateRequest) -> Ar
     
     # 5. Upsert back to database
     try:
+        # Also update artifacts_raw if applicable
+        from app.rag.vectorstore import get_supabase_client
+        client = get_supabase_client()
+        raw_update_data = {}
+        if "artifact_name_en" in fields: raw_update_data["artifact_name_en"] = fields["artifact_name_en"]
+        if "artifact_name_ar" in fields: raw_update_data["artifact_name_ar"] = fields["artifact_name_ar"]
+        if "description_en" in fields: raw_update_data["description_en"] = fields["description_en"]
+        if "description_ar" in fields: raw_update_data["description_ar"] = fields["description_ar"]
+        if "image_url" in fields: raw_update_data["url"] = fields["image_url"]
+        
+        if raw_update_data:
+            try:
+                client.table("artifacts_raw").update(raw_update_data).eq("artifact_id", artifact_id).execute()
+            except Exception as e:
+                logger.error("Failed to update artifacts_raw: %s", e)
+
+        visual_embedding = None
+        if "image_url" in fields and fields["image_url"]:
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(fields["image_url"], timeout=10.0)
+                    if resp.status_code == 200:
+                        from app.dinov2 import DinoV2Encoder
+                        encoder = DinoV2Encoder.get_instance()
+                        visual_embedding = encoder.embed(Image.open(io.BytesIO(resp.content)))
+            except Exception as e:
+                logger.error("Failed to generate visual embedding on patch: %s", e)
+
         add_documents(
             ids=[artifact_id],
             embeddings=[embedding],
             documents=[document],
             metadatas=[current_meta],
+            visual_embeddings=[visual_embedding] if visual_embedding else None,
         )
     except Exception as exc:
         logger.exception("Failed to patch and re-embed artifact %s", artifact_id)

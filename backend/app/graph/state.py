@@ -27,3 +27,4 @@ class GraphState(TypedDict):
     generation: str
     rewrite_count: int
     conversation_history: List[Dict[str, str]]
+    vision_context: str

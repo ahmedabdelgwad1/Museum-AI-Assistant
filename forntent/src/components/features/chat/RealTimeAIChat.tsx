@@ -1,5 +1,5 @@
 "use client";
-import { Send, Mic, Sparkles } from "lucide-react";
+import { Send, Mic, Sparkles, Eye, User } from "lucide-react";
 import { useLiveKit as useChat } from "@/hooks/useLiveKit";
 import { RoomAudioRenderer } from "@livekit/components-react";
 
@@ -45,17 +45,39 @@ export function RealTimeAIChat({ artifact, locale, embedded = false }: Props) {
         </>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-        {messages.map((m, i) => (
-          <div key={i} className={`p-3 rounded-lg max-w-[80%] ${
-            m.role === 'user'
-              ? 'bg-gold text-bg-primary self-end'
-              : `bg-bg-primary ${isAr ? 'border-r-4' : 'border-l-4'} border-gold self-start text-text-primary`
-          }`}>
-            {m.role === 'ai' && <div className="text-[10px] opacity-70 mb-1">{dict.ai?.senderName || 'Museum Guide'} 🤖</div>}
-            <p className={`text-sm ${isAr ? 'font-(family-name:--font-almarai)' : 'font-sans'}`}>{m.content}</p>
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-text-secondary opacity-50 gap-3">
+            <div className="w-16 h-16 rounded-full bg-gold/5 flex items-center justify-center border border-gold/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
+              <Eye className="w-8 h-8 text-gold drop-shadow-md" />
+            </div>
+            <p className={`text-sm ${isAr ? 'font-(family-name:--font-almarai)' : ''}`}>{isAr ? 'المرشد الذكي جاهز للإجابة...' : 'Smart Guide is ready to answer...'}</p>
           </div>
-        ))}
+        ) : (
+          messages.map((m, i) => {
+            const isUser = m.role === 'user';
+            return (
+              <div key={i} className={`flex w-full gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                {/* Avatar */}
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 transition-all ${isUser ? 'bg-bg-card border border-border text-text-secondary' : 'bg-gold/10 border border-gold/50 text-gold shadow-[0_0_10px_rgba(212,175,55,0.15)]'}`}>
+                  {isUser ? <User className="w-4 h-4" /> : <Eye className="w-5 h-5 drop-shadow-md" />}
+                </div>
+
+                {/* Message Bubble */}
+                <div className={`p-3 rounded-2xl max-w-[80%] ${
+                  isUser
+                    ? `bg-gold text-bg-primary shadow-md ${isAr ? 'rounded-tl-none' : 'rounded-tr-none'}`
+                    : `bg-bg-card border border-border text-text-primary shadow-sm ${isAr ? 'rounded-tr-none' : 'rounded-tl-none'}`
+                }`}>
+                  {!isUser && <div className="text-[10px] opacity-80 mb-1.5 font-bold text-gold tracking-widest uppercase flex items-center gap-1">
+                    {dict.ai?.senderName || (isAr ? 'المرشد الذكي' : 'MUSEUM GUIDE')}
+                  </div>}
+                  <p className={`text-sm leading-relaxed ${isAr ? 'font-(family-name:--font-almarai)' : 'font-sans'}`}>{m.content}</p>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       <div className="p-4 border-t border-border bg-bg-primary">
