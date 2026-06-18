@@ -2,3 +2,21 @@
 *.pdf
 *.docx
 *.wav
+
+# Added from user request
+Chapter3_Exhibit_Recognition_Section.txt
+LiveKit Edge-to-Cloud STT-*.png
+WhatsApp Image *.jpeg
+bibalex_full_museum_data.csv
+evaluation_screenshots.html
+final face detection with state with multi person selection.py
+generate_charts.py
+link_storage_images.py
+old .py
+response.json
+subapase_csv.py
+test_groq.py
+test_groq2.py
+test_groq_full.py
+test_voice.py
+upload_to_supabase.py
