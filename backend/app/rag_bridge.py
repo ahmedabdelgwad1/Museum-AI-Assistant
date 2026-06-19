@@ -22,6 +22,24 @@ from app.utils.language import detect_language
 
 logger = logging.getLogger(__name__)
 
+ROBOT_CORE_URL = "http://localhost:8001/action"   # robot_core.py maestro server
+
+
+async def _forward_to_robot(action: dict) -> None:
+    """Fire-and-forget: POST the robot action to the standalone maestro server."""
+    try:
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                ROBOT_CORE_URL,
+                json=action,
+                timeout=aiohttp.ClientTimeout(total=2),
+            ) as resp:
+                logger.info("robot_core responded %s for action: %s", resp.status, action)
+    except Exception as exc:
+        # Never let hardware errors crash the LiveKit audio pipeline
+        logger.warning("Could not reach robot_core.py (is it running?): %s", exc)
+
 
 class RAGStream(llm.LLMStream):
     """Yields a single chunk containing the full RAG answer."""
@@ -223,6 +241,15 @@ class RAGStream(llm.LLMStream):
                     retrieval_time=retrieval_time,
                     llm_ttft_time=llm_ttft_time,
                 )
+
+            # ------------------------------------------------------------------
+            # Forward robot action to the maestro (robot_core.py) — fire & forget
+            # Runs AFTER TTS chunks are sent so audio is never delayed.
+            # ------------------------------------------------------------------
+            robot_action = state.get("robot_action")
+            if robot_action:
+                asyncio.create_task(_forward_to_robot(robot_action))
+                logger.info("Dispatched robot_action to maestro: %s", robot_action)
         except Exception as exc:
             logger.exception("RAG streaming pipeline failed: %s", exc)
             error_msg = (

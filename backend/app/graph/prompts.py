@@ -114,6 +114,46 @@ LOW_CONFIDENCE_CAVEAT_AR = (
 )
 
 # ---------------------------------------------------------------------------
+# Robot Action Instructions (appended to system prompts)
+# The LLM emits spoken text first, then the delimiter, then a JSON action.
+# The delimiter is intercepted by rag_bridge.py — it NEVER reaches the TTS.
+# ---------------------------------------------------------------------------
+
+ROBOT_ACTION_INSTRUCTIONS_EN = (
+    "\n\n### ROBOT MOVEMENT INSTRUCTIONS (CRITICAL — follow exactly):\n"
+    "After your spoken response, you MUST append a hardware command block.\n"
+    "Format it EXACTLY like this (do NOT include it in the spoken text):\n\n"
+    "---ROBOT_ACTION---\n"
+    '{"action": "ACTION", "target_location": "LOCATION_OR_NULL", "listen_after_action": true_or_false}\n\n'
+    "Rules:\n"
+    '- action must be one of: "stop_and_talk", "move", "rotate_to_exhibit"\n'
+    '- Use "stop_and_talk" for explanations (robot stays still).\n'
+    '- Use "move" if the visitor asks to go somewhere or follow the robot.\n'
+    '  Set target_location to the hall name (e.g. "hall_B", "hall_A", "main_entrance").\n'
+    '- Use "rotate_to_exhibit" if the visitor asks about a nearby artifact.\n'
+    '- listen_after_action: true means open the microphone after the action.\n'
+    "- If unsure, default to: {\"action\": \"stop_and_talk\", \"target_location\": null, \"listen_after_action\": true}\n"
+    "- NEVER include the ---ROBOT_ACTION--- block or JSON in your spoken text."
+)
+
+ROBOT_ACTION_INSTRUCTIONS_AR = (
+    "\n\n### تعليمات حركة الروبوت (مهم جداً — اتبعها بدقة):\n"
+    "بعد ردك المنطوق، يجب أن تضيف كتلة أمر الهاردوير.\n"
+    "اكتبها بالضبط كالتالي (لا تدرجها ضمن التحدث):\n\n"
+    "---ROBOT_ACTION---\n"
+    '{"action": "الأمر", "target_location": "المكان_أو_null", "listen_after_action": true_أو_false}\n\n'
+    "القواعد:\n"
+    '- action يجب أن يكون واحداً من: "stop_and_talk"، "move"، "rotate_to_exhibit"\n'
+    '- استخدم "stop_and_talk" للشرح (الروبوت يقف ثابتاً).\n'
+    '- استخدم "move" لو طلب الزائر الذهاب لمكان معين.\n'
+    '  ضع target_location كاسم القاعة (e.g. "hall_B"، "main_entrance").\n'
+    '- استخدم "rotate_to_exhibit" لو سأل عن قطعة قريبة.\n'
+    '- listen_after_action: true يعني افتح المايك بعد تنفيذ الأمر.\n'
+    "• لو مش متأكد، استخدم الافتراضي: {\"action\": \"stop_and_talk\", \"target_location\": null, \"listen_after_action\": true}\n"
+    "• لا تدرج كتلة ---ROBOT_ACTION--- أو JSON ضمن الكلام المنطوق."
+)
+
+# ---------------------------------------------------------------------------
 # Node 3 — Context injection templates
 # ---------------------------------------------------------------------------
 
@@ -186,12 +226,14 @@ def get_system_prompt(language: str, low_confidence: bool = False, vision_contex
             prompt += LOW_CONFIDENCE_CAVEAT_AR
         if vision_context:
             prompt += f"\n\n[سياق الرؤية من الكاميرا: {vision_context}]"
+        prompt += ROBOT_ACTION_INSTRUCTIONS_AR
     else:
         prompt = SYSTEM_PROMPT_EN
         if low_confidence:
             prompt += LOW_CONFIDENCE_CAVEAT_EN
         if vision_context:
             prompt += f"\n\n[Vision Context from Camera: {vision_context}]"
+        prompt += ROBOT_ACTION_INSTRUCTIONS_EN
     return prompt
 
 

@@ -26,6 +26,10 @@ from app.utils.language import detect_language
 
 logger = logging.getLogger(__name__)
 
+# The delimiter the LLM is instructed to emit between spoken text and the action JSON.
+# rag_bridge.py intercepts everything after this — it NEVER reaches TTS.
+ROBOT_ACTION_DELIMITER = "---ROBOT_ACTION---"
+
 # ---------------------------------------------------------------------------
 # Shared Groq clients (one per API key, lazy-initialised)
 # ---------------------------------------------------------------------------
@@ -304,7 +308,25 @@ def generate_answer(state: GraphState) -> GraphState:
             else "I'm sorry, an error occurred while generating the answer. Please try again."
         )
 
-    return {**state, "generation": answer}
+    # ------------------------------------------------------------------
+    # Split at the robot action delimiter to keep generation clean
+    # ------------------------------------------------------------------
+    robot_action = None
+    if ROBOT_ACTION_DELIMITER in answer:
+        spoken_part, _, action_part = answer.partition(ROBOT_ACTION_DELIMITER)
+        answer = spoken_part.strip()
+        try:
+            import json
+            # Strip markdown code fences if LLM wrapped JSON in them
+            clean_json = action_part.strip().lstrip("`").rstrip("`")
+            if clean_json.startswith("json"):
+                clean_json = clean_json[4:].strip()
+            robot_action = json.loads(clean_json)
+            logger.info("Robot action parsed (sync): %s", robot_action)
+        except Exception as parse_err:
+            logger.warning("Failed to parse robot_action JSON: %s | raw=%s", parse_err, action_part[:200])
+
+    return {**state, "generation": answer, "robot_action": robot_action}
 
 
 # ---------------------------------------------------------------------------
@@ -400,6 +422,7 @@ def generate_answer_stream(state: GraphState):
 async def generate_answer_stream_async(state: GraphState):
     from groq import AsyncGroq, RateLimitError
     import asyncio
+    import json
 
     lang = state.get("language", "en")
     question = state["original_query"]
@@ -449,9 +472,68 @@ async def generate_answer_stream_async(state: GraphState):
                 stream=True,
             )
             _current_key_index = idx
+
+            # ------------------------------------------------------------------
+            # Stream interception: collect tokens into a buffer.
+            # Yield spoken text tokens normally; once the delimiter appears in
+            # the buffer, stop yielding and silently accumulate the action JSON.
+            # This keeps the TTS stream 100% clean.
+            # ------------------------------------------------------------------
+            buffer = ""
+            delimiter_found = False
+            action_buffer = ""
+
             async for chunk in stream:
                 delta = chunk.choices[0].delta.content or ""
-                yield delta
+                if not delta:
+                    continue
+
+                if delimiter_found:
+                    # Past the delimiter — accumulate action JSON silently
+                    action_buffer += delta
+                    continue
+
+                buffer += delta
+
+                # Check if the delimiter appeared in the accumulated buffer
+                if ROBOT_ACTION_DELIMITER in buffer:
+                    delimiter_found = True
+                    spoken_part, _, after = buffer.partition(ROBOT_ACTION_DELIMITER)
+                    action_buffer = after  # any tokens already past delimiter
+                    # Yield only the clean spoken text before the delimiter
+                    if spoken_part:
+                        yield spoken_part
+                else:
+                    # Safe to yield — no delimiter yet
+                    # But hold back a window equal to delimiter length in case
+                    # it's arriving split across chunks.
+                    safe_len = max(0, len(buffer) - len(ROBOT_ACTION_DELIMITER))
+                    if safe_len > 0:
+                        yield buffer[:safe_len]
+                        buffer = buffer[safe_len:]
+
+            # Flush any remaining safe buffer (delimiter never arrived)
+            if not delimiter_found and buffer:
+                yield buffer
+
+            # Parse and store the action on the mutable state dict
+            if delimiter_found and action_buffer.strip():
+                try:
+                    clean_json = action_buffer.strip().lstrip("`").rstrip("`")
+                    if clean_json.startswith("json"):
+                        clean_json = clean_json[4:].strip()
+                    parsed = json.loads(clean_json)
+                    state["robot_action"] = parsed
+                    logger.info("Robot action parsed (async): %s", parsed)
+                except Exception as parse_err:
+                    logger.warning(
+                        "Failed to parse robot_action JSON: %s | raw=%s",
+                        parse_err, action_buffer[:200]
+                    )
+                    state["robot_action"] = None
+            else:
+                state["robot_action"] = None
+
             return
         except RateLimitError as exc:
             logger.warning(
@@ -463,6 +545,7 @@ async def generate_answer_stream_async(state: GraphState):
             raise
 
     # All keys exhausted
+    state["robot_action"] = None
     error_msg = (
         "عذرًا، النظام مشغول حالياً. يرجى المحاولة مرة أخرى بعد لحظات."
         if lang == "ar"

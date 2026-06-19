@@ -1,6 +1,6 @@
 """Shared state TypedDict for the LangGraph Corrective RAG pipeline."""
 
-from typing import TypedDict, List, Dict
+from typing import TypedDict, List, Dict, Optional
 
 
 class GraphState(TypedDict):
@@ -17,6 +17,9 @@ class GraphState(TypedDict):
         rewrite_count:        Tracks how many query-rewrites have occurred (max 2).
         conversation_history: Prior conversation turns [{"role": ..., "content": ...}].
                               Injected into the generator to maintain context.
+        robot_action:         Optional dict parsed from the LLM's structured action block.
+                              Example: {"action": "move", "target_location": "hall_B",
+                              "listen_after_action": false}. None if no action was issued.
     """
 
     original_query: str
@@ -28,3 +31,4 @@ class GraphState(TypedDict):
     rewrite_count: int
     conversation_history: List[Dict[str, str]]
     vision_context: str
+    robot_action: Optional[Dict]   # Hardware command — None means "no movement needed"
