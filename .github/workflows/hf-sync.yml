@@ -3,10 +3,10 @@ name: Sync Backend to Hugging Face Space
 on:
   push:
     branches: [main]
-    # سيتم تشغيل هذا الأكشن فقط عند تعديل أي ملف داخل مجلد backend
+    # يعمل فقط عند تعديل ملفات داخل backend
     paths:
       - 'backend/**'
-  workflow_dispatch: # للسماح بتشغيله يدوياً إذا أردت
+  workflow_dispatch: # للتشغيل اليدوي
 
 jobs:
   deploy:
@@ -14,22 +14,72 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Push Backend Folder to Hugging Face
+      - name: Push Backend to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
         run: |
           cd backend
-          
-          # تهيئة بيئة Git مؤقتة داخل مجلد الباك إند فقط
+
+          # تهيئة git مؤقت داخل مجلد backend فقط
           git init
           git checkout -b main
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          
+
+          # إنشاء .gitignore مؤقت يستثني الملفات الثنائية الكبيرة
+          # Hugging Face يرفض binary files بدون LFS
+          cat > .gitignore_hf << 'EOF'
+          # Binary model files
+          *.pt
+          *.pth
+          *.onnx
+          *.task
+          *.pkl
+          *.h5
+
+          # Numpy / data files
+          *.npy
+          *.npz
+
+          # Images and media
+          *.png
+          *.jpg
+          *.jpeg
+          *.gif
+          *.mp4
+          *.mp3
+          *.wav
+
+          # PDFs and documents
+          *.pdf
+          *.docx
+
+          # Python cache
+          __pycache__/
+          *.pyc
+          *.pyo
+
+          # Environment and secrets
+          .env
+          *.env
+
+          # Logs and session data
+          session_logs/
+          *.log
+
+          # Local data files (CSV كبيرة)
+          data/*.csv
+          EOF
+
+          mv .gitignore_hf .gitignore
+
+          # إضافة جميع ملفات الكود (مستثنياً البايناري)
           git add .
-          git commit -m "Auto-sync from GitHub Actions"
-          
-          # رفع الملفات بالإجبار لمساحة Hugging Face (لضمان التطابق التام)
-          git push -f https://user:$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_ID main
+          git commit -m "Auto-sync from GitHub Actions [$(date +'%Y-%m-%d %H:%M')]"
+
+          # رفع بالإجبار لـ Hugging Face Space
+          git push -f https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_ID} main
