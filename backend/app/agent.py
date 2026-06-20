@@ -409,6 +409,7 @@ async def entrypoint(ctx: JobContext):
                             
                         state = await loop.run_in_executor(None, lambda: generate_answer(state))
                         answer = state.get("generation", "")
+                        robot_action = state.get("robot_action")
                         
                         if answer:
                             session_logger.add_turn(
@@ -423,6 +424,20 @@ async def entrypoint(ctx: JobContext):
                             )
                             # Speak out loud
                             await session.say(answer, allow_interruptions=True)
+                            
+                        # Forward robot action if present
+                        if robot_action:
+                            try:
+                                import aiohttp
+                                from app.rag_bridge import ROBOT_CORE_URL
+                                async def post_action():
+                                    async with aiohttp.ClientSession() as http_session:
+                                        async with http_session.post(ROBOT_CORE_URL, json=robot_action, timeout=2) as resp:
+                                            logger.info("Text chat: robot_core responded %s", resp.status)
+                                asyncio.create_task(post_action())
+                                logger.info("Text chat: Dispatched robot_action to maestro: %s", robot_action)
+                            except Exception as e:
+                                logger.error("Text chat: Failed to send robot action: %s", e)
                             
                     except Exception as e:
                         logger.error("Text chat failed: %s", e)
