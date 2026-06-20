@@ -3,10 +3,9 @@ name: Sync Backend to Hugging Face Space
 on:
   push:
     branches: [main]
-    # يعمل فقط عند تعديل ملفات داخل backend
     paths:
       - 'backend/**'
-  workflow_dispatch: # للتشغيل اليدوي
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -24,62 +23,40 @@ jobs:
         run: |
           cd backend
 
-          # تهيئة git مؤقت داخل مجلد backend فقط
+          # حذف الملفات الثنائية الكبيرة قبل الرفع
+          find . -type f \( \
+            -name "*.pt" -o \
+            -name "*.pth" -o \
+            -name "*.onnx" -o \
+            -name "*.task" -o \
+            -name "*.pkl" -o \
+            -name "*.h5" -o \
+            -name "*.npy" -o \
+            -name "*.npz" -o \
+            -name "*.png" -o \
+            -name "*.jpg" -o \
+            -name "*.jpeg" -o \
+            -name "*.gif" -o \
+            -name "*.mp4" -o \
+            -name "*.mp3" -o \
+            -name "*.wav" -o \
+            -name "*.pdf" -o \
+            -name "*.docx" -o \
+            -name "*.csv" \
+          \) -delete
+
+          # حذف مجلدات غير ضرورية
+          rm -rf __pycache__ .pytest_cache session_logs/ data/*.csv
+
+          # تهيئة git جديد
           git init
           git checkout -b main
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
 
-          # إنشاء .gitignore مؤقت يستثني الملفات الثنائية الكبيرة
-          # Hugging Face يرفض binary files بدون LFS
-          cat > .gitignore_hf << 'EOF'
-          # Binary model files
-          *.pt
-          *.pth
-          *.onnx
-          *.task
-          *.pkl
-          *.h5
-
-          # Numpy / data files
-          *.npy
-          *.npz
-
-          # Images and media
-          *.png
-          *.jpg
-          *.jpeg
-          *.gif
-          *.mp4
-          *.mp3
-          *.wav
-
-          # PDFs and documents
-          *.pdf
-          *.docx
-
-          # Python cache
-          __pycache__/
-          *.pyc
-          *.pyo
-
-          # Environment and secrets
-          .env
-          *.env
-
-          # Logs and session data
-          session_logs/
-          *.log
-
-          # Local data files (CSV كبيرة)
-          data/*.csv
-          EOF
-
-          mv .gitignore_hf .gitignore
-
-          # إضافة جميع ملفات الكود (مستثنياً البايناري)
+          # إضافة الكود فقط
           git add .
-          git commit -m "Auto-sync from GitHub Actions [$(date +'%Y-%m-%d %H:%M')]"
+          git commit -m "Auto-sync from GitHub [$(date +'%Y-%m-%d %H:%M')]"
 
-          # رفع بالإجبار لـ Hugging Face Space
+          # رفع لـ Hugging Face Space
           git push -f https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_ID} main
