@@ -1,25 +1,23 @@
 FROM python:3.10
 
-# إنشاء مسار العمل داخل الحاوية
+# مسار العمل
 WORKDIR /app
 
-# إنشاء مجلد للبيانات بصلاحيات تسمح بالكتابة (مهم جداً لـ Hugging Face)
+# مجلد بيانات قابل للكتابة (مطلوب لـ Hugging Face)
 RUN mkdir -p /app/data && chmod 777 /app/data
 
-# نسخ ملف المتطلبات وتثبيتها
+# تثبيت المتطلبات
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# نسخ باقي ملفات المشروع
+# نسخ كود المشروع
 COPY . .
 
-# إعطاء صلاحيات القراءة والكتابة لكل الملفات للمستخدم الخاص بـ Hugging Face
-RUN chmod -R 777 /app
+# صلاحيات الكتابة
+RUN chmod -R 777 /app && chmod +x /app/start.sh
 
-# منصة Hugging Face تستخدم البورت 7860 بشكل افتراضي
+# البورت الخاص بـ Hugging Face
 EXPOSE 7860
 
-# تشغيل السيرفر
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
-
-# Trigger GitHub Action
+# تشغيل FastAPI + LiveKit Agent معاً
+CMD ["/bin/bash", "/app/start.sh"]
