@@ -124,13 +124,14 @@ ROBOT_ACTION_INSTRUCTIONS_EN = (
     "After your spoken response, you MUST append a hardware command block.\n"
     "Format it EXACTLY like this (do NOT include it in the spoken text):\n\n"
     "---ROBOT_ACTION---\n"
-    '{"action": "ACTION", "target_location": "LOCATION_OR_NULL", "listen_after_action": true_or_false}\n\n'
+    '{"action": "ACTION", "target_location": "LOCATION_OR_DIRECTION", "listen_after_action": true_or_false}\n\n'
     "Rules:\n"
-    '- action must be one of: "stop_and_talk", "move", "rotate_to_exhibit"\n'
+    '- action must be one of: "stop_and_talk", "move", "rotate"\n'
     '- Use "stop_and_talk" for explanations (robot stays still).\n'
-    '- Use "move" if the visitor asks to go somewhere or follow the robot.\n'
-    '  Set target_location to the hall name (e.g. "hall_B", "hall_A", "main_entrance").\n'
-    '- Use "rotate_to_exhibit" if the visitor asks about a nearby artifact.\n'
+    '- Use "move" if the visitor asks to go somewhere or move in a direction.\n'
+    '  If they ask for a direction, set target_location to: "forward", "backward", "right", or "left".\n'
+    '  If they ask for a hall, set target_location to the hall name (e.g. "hall_B").\n'
+    '- Use "rotate" if the visitor asks you to turn around or rotate.\n'
     '- listen_after_action: true means open the microphone after the action.\n'
     "- If unsure, default to: {\"action\": \"stop_and_talk\", \"target_location\": null, \"listen_after_action\": true}\n"
     "- NEVER include the ---ROBOT_ACTION--- block or JSON in your spoken text."
@@ -141,13 +142,14 @@ ROBOT_ACTION_INSTRUCTIONS_AR = (
     "بعد ردك المنطوق، يجب أن تضيف كتلة أمر الهاردوير.\n"
     "اكتبها بالضبط كالتالي (لا تدرجها ضمن التحدث):\n\n"
     "---ROBOT_ACTION---\n"
-    '{"action": "الأمر", "target_location": "المكان_أو_null", "listen_after_action": true_أو_false}\n\n'
+    '{"action": "الأمر", "target_location": "المكان_أو_الاتجاه", "listen_after_action": true_أو_false}\n\n'
     "القواعد:\n"
-    '- action يجب أن يكون واحداً من: "stop_and_talk"، "move"، "rotate_to_exhibit"\n'
+    '- action يجب أن يكون واحداً من: "stop_and_talk"، "move"، "rotate"\n'
     '- استخدم "stop_and_talk" للشرح (الروبوت يقف ثابتاً).\n'
-    '- استخدم "move" لو طلب الزائر الذهاب لمكان معين.\n'
-    '  ضع target_location كاسم القاعة (e.g. "hall_B"، "main_entrance").\n'
-    '- استخدم "rotate_to_exhibit" لو سأل عن قطعة قريبة.\n'
+    '- استخدم "move" لو طلب الزائر الذهاب لمكان أو التحرك في اتجاه معين.\n'
+    '  لو طلب اتجاه، اجعل target_location واحداً من: "forward"، "backward"، "right"، أو "left".\n'
+    '  لو طلب قاعة، اجعل target_location اسم القاعة (e.g. "hall_B").\n'
+    '- استخدم "rotate" لو طلب الزائر منك أن تلف أو تستدير.\n'
     '- listen_after_action: true يعني افتح المايك بعد تنفيذ الأمر.\n'
     "• لو مش متأكد، استخدم الافتراضي: {\"action\": \"stop_and_talk\", \"target_location\": null, \"listen_after_action\": true}\n"
     "• لا تدرج كتلة ---ROBOT_ACTION--- أو JSON ضمن الكلام المنطوق."
