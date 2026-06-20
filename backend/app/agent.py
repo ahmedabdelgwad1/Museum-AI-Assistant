@@ -362,6 +362,75 @@ async def entrypoint(ctx: JobContext):
         logger.info("Track subscribed: kind=%s, name=%s", track.kind, track.name)
         start_vision_loop(track, participant)
 
+    @ctx.room.on("data_received")
+    def on_data_received(*args, **kwargs):
+        try:
+            data = args[0] if len(args) > 0 else kwargs.get("data")
+            if not isinstance(data, bytes):
+                if hasattr(data, "data"): data = data.data
+                else: return
+            payload = json.loads(data.decode("utf-8"))
+            if payload.get("type") == "text_message":
+                text = payload.get("content")
+                lang = payload.get("language", "ar")
+                logger.info("Received text message from Vercel UI: %s", text)
+                
+                # Force active state so it speaks without waiting for camera
+                rag_bridge.visitor_state = "active"
+                
+                async def respond_to_text():
+                    try:
+                        from app.graph.nodes import rewrite_query, retrieve_and_grade, generate_answer
+                        from app.graph.edges import should_rewrite
+                        from app.graph.state import GraphState
+                        
+                        history = []
+                        for m in session_logger.messages:
+                            history.append({"role": m.role, "content": m.content})
+                            
+                        state: GraphState = {
+                            "original_query": text,
+                            "rewritten_query": "",
+                            "language": lang,
+                            "retrieved_docs": [],
+                            "relevance_score": 0.0,
+                            "generation": "",
+                            "rewrite_count": 0,
+                            "conversation_history": history,
+                            "vision_context": rag_bridge.vision_context,
+                        }
+                        
+                        loop = asyncio.get_running_loop()
+                        state = await loop.run_in_executor(None, lambda: rewrite_query(state))
+                        state = await loop.run_in_executor(None, lambda: retrieve_and_grade(state))
+                        while should_rewrite(state) == "rewrite":
+                            state = await loop.run_in_executor(None, lambda: rewrite_query(state))
+                            state = await loop.run_in_executor(None, lambda: retrieve_and_grade(state))
+                            
+                        state = await loop.run_in_executor(None, lambda: generate_answer(state))
+                        answer = state.get("generation", "")
+                        
+                        if answer:
+                            session_logger.add_turn(
+                                user_query=text,
+                                ai_response=answer,
+                                latency_seconds=0,
+                                generation_time_seconds=0,
+                                relevance_score=state.get("relevance_score", 0.0),
+                                contexts=[],
+                                retrieval_time=0,
+                                llm_ttft_time=0
+                            )
+                            # Speak out loud
+                            await session.say(answer, allow_interruptions=True)
+                            
+                    except Exception as e:
+                        logger.error("Text chat failed: %s", e)
+                        
+                asyncio.create_task(respond_to_text())
+        except Exception:
+            pass
+
     for publication in participant.track_publications.values():
         if publication.track is not None:
             logger.info("Existing track found: kind=%s, name=%s", publication.kind, getattr(publication.track, 'name', 'unknown'))
