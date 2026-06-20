@@ -15,7 +15,5 @@ uvicorn main:app --host 0.0.0.0 --port 7860 &
 API_PID=$!
 echo "FastAPI PID: $API_PID"
 
-# If either process dies, kill both
-wait -n
-echo "!!! A process exited. Shutting down..."
-kill $AGENT_PID $API_PID 2>/dev/null
+# Wait for the API process to keep container running
+wait $API_PID
