@@ -1,43 +1,36 @@
-from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
-
 import asyncio
-import edge_tts
-import uuid
-from livekit.agents import tts
+import os
+import sys
 
-class EdgeTTS(tts.TTS):
-    def __init__(self, voice="ar-EG-SalmaNeural"):
-        super().__init__(
-            capabilities=tts.TTSCapabilities(streaming=False),
-            sample_rate=24000,
-            num_channels=1,
-        )
-        self._voice = voice
+# Append backend path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-    def synthesize(self, text: str, **kwargs) -> tts.ChunkedStream:
-        return _EdgeChunkedStream(tts=self, input_text=text, conn_options=kwargs.get("conn_options", DEFAULT_API_CONNECT_OPTIONS))
-
-class _EdgeChunkedStream(tts.ChunkedStream):
-    async def _run(self, output_emitter: tts.AudioEmitter) -> None:
-        output_emitter.initialize(
-            request_id=uuid.uuid4().hex,
-            sample_rate=self._tts.sample_rate,
-            num_channels=self._tts.num_channels,
-            mime_type="mp3"
-        )
-
-        communicate = edge_tts.Communicate(self._input_text, self._tts._voice)
-        
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                output_emitter.push(chunk["data"])
-                
+from app.edge_tts_plugin import EdgeTTS
+from livekit.agents.tts import AudioEmitter, ChunkedStream
 
 async def main():
-    my_tts = EdgeTTS()
-    stream = my_tts.synthesize("مرحبا بك")
-    async for chunk in stream:
-        print(f"Got chunk: {chunk.frame.samples_per_channel} samples")
+    try:
+        tts = EdgeTTS()
+        print("EdgeTTS initialized")
+        stream = tts.synthesize("اهلا بك")
+        print("Stream created")
+        
+        class MockEmitter:
+            def initialize(self, *args, **kwargs):
+                print("Emitter initialized with", args, kwargs)
+            def push(self, data):
+                print("Emitter pushed data length:", len(data))
+        
+        # Test if edge_tts can stream properly
+        import edge_tts
+        comm = edge_tts.Communicate("اهلا", "ar-EG-SalmaNeural")
+        count = 0
+        async for chunk in comm.stream():
+            if chunk["type"] == "audio":
+                count += 1
+        print("EdgeTTS successfully returned", count, "audio chunks")
+    except Exception as e:
+        print("Error:", e)
 
 if __name__ == "__main__":
     asyncio.run(main())

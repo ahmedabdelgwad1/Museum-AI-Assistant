@@ -42,7 +42,6 @@ from livekit.plugins import groq, silero
 from app.rag_bridge import RAGBridge
 from app.edge_tts_plugin import EdgeTTS
 from app.utils.session_logger import SessionLogger
-from app.vision import VisitorVision
 
 
 def prewarm_process(*args, **kwargs):
@@ -65,7 +64,7 @@ logger = logging.getLogger(__name__)
 
 async def _vision_loop(
     track: rtc.VideoTrack,
-    vision: VisitorVision,
+    vision: Any,
     session: AgentSession,
     rag_bridge: "RAGBridge",
     question: str,
@@ -89,11 +88,17 @@ async def _vision_loop(
                 elif hasattr(ask_task, "cancel"):
                     ask_task.cancel()
                 ask_task = None
-            result = session.interrupt(force=True)
-            # Handle both sync and async interrupt implementations
-            if asyncio.iscoroutine(result) or asyncio.isfuture(result):
-                await result
-            logger.info("Vision: speech interrupted successfully")
+            try:
+                result = session.interrupt(force=True)
+                # Handle both sync and async interrupt implementations
+                if asyncio.iscoroutine(result) or asyncio.isfuture(result):
+                    await result
+                logger.info("Vision: speech interrupted successfully")
+            except RuntimeError as re:
+                if "isn't running" in str(re):
+                    logger.warning("Vision: could not interrupt, AgentSession is not running")
+                else:
+                    raise
         except Exception:
             logger.exception("Vision: failed to interrupt session")
 
@@ -118,7 +123,13 @@ async def _vision_loop(
         await interrupt_current_speech()
         if timeout_handle:
             timeout_handle.cancel()
-        ask_task = session.say(continue_question, allow_interruptions=True)
+        try:
+            ask_task = session.say(continue_question, allow_interruptions=True)
+        except RuntimeError as re:
+            if "isn't running" in str(re):
+                logger.warning("Vision: could not speak continue question, AgentSession is not running")
+            else:
+                raise
         timeout_handle = asyncio.create_task(close_after_continue_timeout())
 
     try:
@@ -199,7 +210,15 @@ async def _vision_loop(
                     logger.info("Vision ENGAGED → asking visitor to opt in")
                     asked = True
                     rag_bridge.visitor_state = "asking"
-                    ask_task = session.say(question, allow_interruptions=True)
+                    try:
+                        ask_task = session.say(question, allow_interruptions=True)
+                    except RuntimeError as re:
+                        if "isn't running" in str(re):
+                            logger.warning("Vision: could not speak opt-in greeting, AgentSession is not running")
+                            asked = False
+                            rag_bridge.visitor_state = "none"
+                        else:
+                            raise
 
             # ---- OBSERVING: visible but looking away/not centered ----
             elif new_state == "OBSERVING":
@@ -260,6 +279,11 @@ async def entrypoint(ctx: JobContext):
     def on_disconnected(*args, **kwargs):
         session_logger.save()
 
+    # Ensure GROQ_API_KEY is a single key (not comma-separated list) for LiveKit plugins
+    from app.config import settings
+    if settings.groq_api_keys:
+        os.environ["GROQ_API_KEY"] = settings.groq_api_keys[0]
+
     # ---- Build Agent ----
     assistant = Agent(
         instructions=(
@@ -303,9 +327,15 @@ async def entrypoint(ctx: JobContext):
     )
 
     # ---- Vision: hook into video track when it arrives ----
-    vision = VisitorVision()
+    bypass_vision = os.getenv("BYPASS_VISION", "false").lower() == "true"
+    if bypass_vision:
+        vision = None
+    else:
+        from app.vision import VisitorVision
+        vision = VisitorVision()
 
     vision_task: asyncio.Task | None = None
+    video_track_received = asyncio.Event()
 
     def start_vision_loop(
         track: rtc.Track,
@@ -315,7 +345,10 @@ async def entrypoint(ctx: JobContext):
         if track.kind == rtc.TrackKind.KIND_VIDEO:
             if vision_task and not vision_task.done():
                 return
+            if vision is None:
+                return
             logger.info("Video track subscribed from %s — starting vision loop", participant.identity)
+            video_track_received.set()
             vision_task = asyncio.ensure_future(
                 _vision_loop(track, vision, session, rag_bridge, question, continue_question)
             )
@@ -335,14 +368,51 @@ async def entrypoint(ctx: JobContext):
         if publication.kind == rtc.TrackKind.KIND_VIDEO and publication.track is not None:
             start_vision_loop(publication.track, participant)
 
+    async def check_video_timeout():
+        try:
+            await asyncio.wait_for(video_track_received.wait(), timeout=3.0)
+            logger.info("Video track received successfully. Vision-gated mode active.")
+        except asyncio.TimeoutError:
+            if rag_bridge.visitor_state == "none":
+                logger.info("No video track received after 3 seconds. Falling back to voice-only mode.")
+                rag_bridge.visitor_state = "active"
+                try:
+                    await session.say(greeting, allow_interruptions=True)
+                except Exception as e:
+                    logger.warning("Failed to speak fallback greeting: %s", e)
+
+    if bypass_vision:
+        logger.info("BYPASS_VISION=True. Bypassing vision loop and activating voice directly.")
+        rag_bridge.visitor_state = "active"
+        async def say_immediate_greeting():
+            try:
+                await session.say(greeting, allow_interruptions=True)
+            except Exception as e:
+                logger.warning("Failed to speak immediate greeting: %s", e)
+        asyncio.create_task(say_immediate_greeting())
+    else:
+        asyncio.create_task(check_video_timeout())
+
     # ---- Cleanup vision on disconnect ----
     @ctx.room.on("disconnected")
     def on_room_disconnected(*args, **kwargs):
-        vision.close()
+        if vision is not None:
+            vision.close()
 
     logger.info(
         "Agent ready — waiting for visitor to look at the robot before greeting."
     )
+
+    # Keep the entrypoint alive until the room disconnects
+    try:
+        while ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
+            await asyncio.sleep(1)
+    except asyncio.CancelledError:
+        logger.info("Agent job cancelled")
+    finally:
+        logger.info("Agent job session ended, cleaning up resources")
+        if vision_task and not vision_task.done():
+            vision_task.cancel()
 
 
 if __name__ == "__main__":
