@@ -69,16 +69,21 @@ class RAGStream(llm.LLMStream):
         self.session_logger = session_logger
         self.start_time = time.time()
 
+        # Get messages list
+        msgs = chat_ctx.messages
+        if callable(msgs):
+            msgs = msgs()
+
         # Extract the latest user message
         self._last_user_msg = ""
-        for m in reversed(chat_ctx.messages):
+        for m in reversed(msgs):
             if m.role == "user":
                 self._last_user_msg = m.content if isinstance(m.content, str) else str(m.content)
                 break
 
         # Build conversation history
         self._history: list[dict] = []
-        for m in chat_ctx.messages[:-1]:
+        for m in msgs[:-1]:
             role = m.role if m.role in {"user", "assistant"} else "assistant"
             content = m.content if isinstance(m.content, str) else str(m.content)
             self._history.append({"role": role, "content": content})
