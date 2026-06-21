@@ -325,6 +325,18 @@ def generate_answer(state: GraphState) -> GraphState:
             logger.info("Robot action parsed (sync): %s", robot_action)
         except Exception as parse_err:
             logger.warning("Failed to parse robot_action JSON: %s | raw=%s", parse_err, action_part[:200])
+    else:
+        # Fallback: regex search for JSON if the LLM forgot the delimiter
+        import re, json
+        match = re.search(r'\{[^{}]*"action"\s*:\s*"[^"]+"[^{}]*\}', answer)
+        if match:
+            try:
+                robot_action = json.loads(match.group(0))
+                # remove it from spoken answer
+                answer = answer.replace(match.group(0), "").strip()
+                logger.info("Robot action parsed via regex fallback (sync): %s", robot_action)
+            except Exception:
+                pass
 
     return {**state, "generation": answer, "robot_action": robot_action}
 
@@ -532,7 +544,18 @@ async def generate_answer_stream_async(state: GraphState):
                     )
                     state["robot_action"] = None
             else:
-                state["robot_action"] = None
+                # Fallback: maybe it's in the buffer without delimiter
+                import re
+                match = re.search(r'\{[^{}]*"action"\s*:\s*"[^"]+"[^{}]*\}', buffer)
+                if match:
+                    try:
+                        parsed = json.loads(match.group(0))
+                        state["robot_action"] = parsed
+                        logger.info("Robot action parsed via regex fallback (async): %s", parsed)
+                    except Exception:
+                        state["robot_action"] = None
+                else:
+                    state["robot_action"] = None
 
             return
         except RateLimitError as exc:
