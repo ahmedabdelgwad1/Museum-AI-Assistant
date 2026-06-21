@@ -24,11 +24,11 @@ from app.utils.language import detect_language
 logger = logging.getLogger(__name__)
 
 # robot_core.py can run locally OR on a Raspberry Pi 5 over the network.
-# Set ROBOT_CORE_IP in your .env to the Pi's IP address (e.g. 192.168.1.50).
-# Defaults to localhost if not set (useful for testing without Pi).
+# Set ROBOT_CORE_URL in your .env to the Pi's Ngrok or local IP address.
 _robot_core_ip = os.getenv("ROBOT_CORE_IP", "localhost")
 _robot_core_port = os.getenv("ROBOT_CORE_PORT", "8001")
-ROBOT_CORE_URL = f"http://{_robot_core_ip}:{_robot_core_port}/action"
+# Hardcoded temporarily for debugging
+ROBOT_CORE_URL = "https://rory-crustless-xiao.ngrok-free.dev/action"
 logger.info("Robot core endpoint: %s", ROBOT_CORE_URL)
 
 
